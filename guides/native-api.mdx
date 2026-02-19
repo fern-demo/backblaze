@@ -1,0 +1,23 @@
+# Native API
+
+The Backblaze B2 Cloud Storage [Native API](https://www.backblaze.com/apidocs/introduction-to-the-b2-native-api) is Backblaze's custom API that enables you to interact with Backblaze B2.
+
+To get started, simply create a [Backblaze](http://www.backblaze.com/) account and [enable Backblaze B2](https://www.backblaze.com/bb/docs/cloud-storage-enable-backblaze-b2). Access your [app key](https://www.backblaze.com/bb/docs/cloud-storage-application-keys) that lets you call the [Native API](https://www.backblaze.com/apidocs/introduction-to-the-b2-native-api).
+
+For all of the Backblaze API operations and their corresponding documentation, see [API Documentation](https://www.backblaze.com/apidocs).
+
+## Key Management
+
+Key management is unique to the [Native API](https://www.backblaze.com/apidocs/introduction-to-the-b2-native-api). The [S3-Compatible API](https://www.backblaze.com/apidocs/introduction-to-the-s3-compatible-api) does not support key management. With key management, you can create, delete, and list keys using the following calls:
+
+- `b2_list_keys`
+- `b2_delete_key`
+- `b2_create_key`
+
+## Pre-Signed URLs
+
+Instead of a pre-signed URL, the [Native API](https://www.backblaze.com/apidocs/introduction-to-the-b2-native-api) requires an authorization token to be part of the API request. The `b2_authorize_account` request receives the authorization token that you can then use for account-level operations. If you only want to authorize downloads instead of all account-level operations, you can use the request `b2_get_download_authorization` to generate an authorization token, which can then be used in the URL to authenticate the request.
+
+## Supported Connection Protocols
+
+Currently, only HTTPS requests are supported for Backblaze B2. File transfer protocol (FTP) or secure socket shell (SSH) are not officially supported at this time.

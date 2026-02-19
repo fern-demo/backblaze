@@ -1,0 +1,71 @@
+---
+title: Developer Quickstart Guide
+description: Build applications that use Backblaze B2 Cloud Storage in thirty minutes or less.
+---
+
+Use this guide to build applications that use Backblaze B2 Cloud Storage in thirty minutes or less using the S3-Compatible API or the B2 Native API.
+
+## Overview
+
+Backblaze B2 is public cloud object storage with an S3-Compatible API, so you can configure almost any application, tool, or SDK designed for Amazon Simple Storage Service (Amazon S3).
+
+As well as its S3-Compatible API, Backblaze B2 provides its own Native API. Most of the native API operations are equivalent to Amazon S3 actions. There are a few native API calls for Backblaze B2-specific functionality, but the S3-Compatible API has everything that most applications need.
+
+## Enable B2 Cloud Storage
+
+Before you begin, you must have a [Backblaze B2 Cloud Storage account](https://www.backblaze.com/b2/sign-up.html).
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the user menu in the upper-right corner of the page, select **My Settings**.
+3. Under **Enabled Products**, select the checkbox to enable B2 Cloud Storage.
+4. Review the Terms and Conditions, and click **OK** to accept them.
+
+## Create a Bucket
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under **B2 Cloud Storage**, click **Buckets**.
+3. Click **Create a Bucket**.
+4. Enter a name for your bucket. Bucket names must be at least six characters and globally unique.
+5. Select a privacy setting: **Private** or **Public**.
+6. If applicable, enable [server-side encryption](https://www.backblaze.com/docs/cloud-storage-server-side-encryption).
+7. Enable [Object Lock](https://www.backblaze.com/docs/cloud-storage-object-lock) to restrict a file from being modified or deleted for a specified period of time.
+8. Click **Lifecycle Settings** to control how long to keep the files in your new bucket.
+9. Click **Create a Bucket**, and copy the value that is in the **Endpoint** field.
+
+<Note>
+You can change a bucket's privacy settings at any time. Files that are in a private bucket require authentication to perform an action, for example, downloading. Public buckets do not require authentication so you can easily access files.
+</Note>
+
+## Upload a File
+
+You can upload files to a Backblaze B2 bucket from your local drive. The maximum single file size that you can upload through the Backblaze web console is 500 MB.
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under **B2 Cloud Storage**, click **Buckets**.
+3. In your bucket details, click **Upload/Download** and click **Upload**.
+4. Drop your files from your local drive into the dialog box, or manually select your files.
+5. In the left navigation menu, click **Browse Files** to see your uploaded file.
+
+## Create an Application Key
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under **B2 Cloud Storage**, click **Application Keys**.
+3. Click **Add a New Application Key**, and enter an app key name.
+4. Select **All** or select a specific bucket in the **Allow Access to Bucket(s)** menu.
+5. Optionally, select your access type (Read and Write, Read Only, or Write Only).
+6. Optionally, select **Allow List All Bucket Names** (required for `b2_list_buckets` and S3 List Buckets operations).
+7. Optionally, enter a file name prefix to restrict application key access.
+8. Optionally, enter a positive integer to limit the time, in seconds, before the application key expires.
+9. Click **Create New Key**, and note the resulting `keyID` and `applicationKey` values.
+
+<Warning>
+When you create a new app key, the `applicationKey` appears only once. Make sure you copy and securely save this value.
+</Warning>
+
+## Create Applications
+
+You can use AWS developer tools to access Backblaze B2 programmatically:
+
+- **CLI** — Use the AWS Command-Line Interface to interact with Backblaze B2.
+- **Python** — Use the AWS SDK for Python (Boto3) to build applications.
+- **Java** — Use the AWS SDK for Java to build applications.

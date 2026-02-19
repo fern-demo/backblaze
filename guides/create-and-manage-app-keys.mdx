@@ -1,0 +1,50 @@
+# Create and Manage App Keys
+
+You must generate a master application key (master app key) for your account. The master app key provides complete access to your account. Your master app key becomes invalid if you generate a new one.
+
+After you generate a master app key, you can create an application key (app key). For more information, see [Application Keys](https://www.backblaze.com/bb/docs/cloud-storage-application-keys).
+
+<Note>
+Some of the changes that you make to app keys may take a few minutes. For example, if you generate a new master app key, the old one must be invalidated before the new one is generated.
+</Note>
+
+## Generate a Master App Key
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under B2 Cloud Storage, click **Application Keys**.
+3. In the Master Application Key section, click **Generate New Master Application Key**.
+4. Click **Yes! Generate Master Key**.
+
+<Note>
+Because your master app key is shown only when you generate it, save your master app key in a secure location if you plan to use it more than once.
+
+The term "master application key ID" was formerly called an "account ID." If you use an integration in which the terminology was not updated to reflect this change, the master application key ID works in place of your account ID. For a standard app key, you can use that key's keyID in place of an account ID.
+
+You can find your master app key ID on the Application Keys page.
+</Note>
+
+## Create an App Key
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under B2 Cloud Storage, click **Application Keys**.
+3. Click **Add a New Application Key**, and enter an app key name. You cannot search an app key by this name; therefore, app key names are not required to be globally unique. Key names are limited to 100 characters and can contain letters, numbers, and "-", but not I18N characters, such as é, à, and ü.
+4. Select **All** or select a specific bucket in the **Allow Access to Bucket(s)** menu.
+5. Optionally, select your access type (**Read and Write**, **Read Only**, or **Write Only**).
+6. Optionally, select **Allow List All Bucket Names**. This option is required for the B2 Native API [b2_list_buckets](https://www.backblaze.com/apidocs/b2-list-buckets) and the S3-Compatible API [S3 List Buckets](https://www.backblaze.com/apidocs/s3-list-buckets) operations.
+7. Optionally, enter a file name prefix to restrict application key access only to files with that prefix. Depending on what you selected in step #4, this limits application key access to files with the specified prefix for all buckets or just the selected bucket.
+8. Optionally, enter a positive integer to limit the time, in seconds, before the application key expires. The value must be less than 1000 days (in seconds).
+9. Click **Create New Key**, and note the resulting keyID and applicationKey values.
+
+<Note>
+When you create a new app key, the response contains the actual key string, for example `N2Zug0evLcHDlh_L0Z0AJhiGGdY`. You can always find the keyID on this page, but for security, the applicationKey appears only once. Make sure you copy and securely save this value elsewhere.
+</Note>
+
+## Delete an App Key
+
+You can delete an app key to revoke access to a bucket.
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under B2 Cloud Storage, click **Application Keys**.
+3. In the Your Application Keys section, click **Delete Key**.
+
+The key is no longer valid for authorization. You cannot restore the app key.

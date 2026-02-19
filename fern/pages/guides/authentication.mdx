@@ -1,0 +1,106 @@
+---
+title: Authentication
+description: Learn how to authenticate with the Backblaze B2 APIs using application keys.
+---
+
+The Backblaze B2 APIs use application keys to authenticate requests. You must first generate a master application key, then use it to obtain an authorization token for subsequent API calls.
+
+## Application Keys
+
+There are two types of application keys:
+
+- **Master Application Key** — The first key you have access to. It is available in the Backblaze web UI and has all capabilities, access to all buckets, and has no file prefix restrictions or expiration.
+- **Application Keys (non-master)** — Created by you with the ability to restrict capabilities, limit to specific buckets, set file prefix restrictions, and configure expiration.
+
+## Generate a Master App Key
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under **B2 Cloud Storage**, click **Application Keys**.
+3. In the **Master Application Key** section, click **Generate New Master Application Key**.
+4. Click **Yes! Generate Master Key**.
+
+<Warning>
+Your master app key is shown only when you generate it. Save your master app key in a secure location if you plan to use it more than once. Generating a new master app key invalidates the previous one.
+</Warning>
+
+<Note>
+The term "master application key ID" was formerly called an "account ID." If you use an integration that still uses the old terminology, the master application key ID works in place of your account ID.
+</Note>
+
+## Create an App Key
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under **B2 Cloud Storage**, click **Application Keys**.
+3. Click **Add a New Application Key**, and enter an app key name.
+4. Select **All** or select a specific bucket in the **Allow Access to Bucket(s)** menu.
+5. Optionally, select your access type (Read and Write, Read Only, or Write Only).
+6. Optionally, select **Allow List All Bucket Names**.
+7. Optionally, enter a file name prefix to restrict application key access.
+8. Optionally, enter a positive integer to limit the time, in seconds, before the key expires (must be less than 1000 days in seconds).
+9. Click **Create New Key**, and note the resulting `keyID` and `applicationKey` values.
+
+<Warning>
+The `applicationKey` appears only once when created. Make sure you copy and securely save this value.
+</Warning>
+
+## Delete an App Key
+
+You can delete an app key to revoke access:
+
+1. [Sign in](https://secure.backblaze.com/user_signin.htm) to the Backblaze web console.
+2. In the left navigation menu under **B2 Cloud Storage**, click **Application Keys**.
+3. In the **Your Application Keys** section, click **Delete Key**.
+
+The key is no longer valid for authorization and cannot be restored.
+
+## Authorize with the B2 Native API
+
+To obtain an authorization token using the B2 Native API:
+
+1. Combine your `applicationKeyId` and `applicationKey` into the format `applicationKeyId:applicationKey`.
+2. Base64-encode the combined string.
+3. Send a `GET` request to `/b2api/v4/b2_authorize_account` with the header `Authorization: Basic <encoded-string>`.
+
+The response includes:
+- An `authorizationToken` to use for subsequent API calls (valid for up to 24 hours).
+- An `apiUrl` to use as the base URL for most API calls.
+- A `downloadUrl` to use as the base URL for file downloads.
+
+```bash
+curl -s \
+  -H "Authorization: Basic $(echo -n 'applicationKeyId:applicationKey' | base64)" \
+  "https://api.backblazeb2.com/b2api/v4/b2_authorize_account"
+```
+
+## Key Capabilities
+
+Application keys can be configured with the following capabilities:
+
+| Capability | Description |
+|---|---|
+| `listKeys` | List application keys |
+| `writeKeys` | Create application keys |
+| `deleteKeys` | Delete application keys |
+| `listBuckets` | List buckets |
+| `listAllBucketNames` | List all bucket names |
+| `readBuckets` | Read bucket settings |
+| `writeBuckets` | Create and update buckets |
+| `deleteBuckets` | Delete buckets |
+| `listFiles` | List files in a bucket |
+| `readFiles` | Download files |
+| `shareFiles` | Create download authorizations |
+| `writeFiles` | Upload files |
+| `deleteFiles` | Delete files |
+| `readBucketEncryption` | Read bucket encryption settings |
+| `writeBucketEncryption` | Set bucket encryption settings |
+| `readBucketRetentions` | Read bucket Object Lock settings |
+| `writeBucketRetentions` | Set bucket Object Lock settings |
+| `readFileRetentions` | Read file retention settings |
+| `writeFileRetentions` | Set file retention settings |
+| `readFileLegalHolds` | Read file legal hold status |
+| `writeFileLegalHolds` | Set file legal hold status |
+| `bypassGovernance` | Bypass governance mode retention |
+| `readBucketNotifications` | Read bucket notification rules |
+| `writeBucketNotifications` | Set bucket notification rules |
+| `readBucketReplications` | Read replication settings |
+| `writeBucketReplications` | Set replication settings |

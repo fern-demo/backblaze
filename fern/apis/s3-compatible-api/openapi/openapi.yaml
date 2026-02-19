@@ -1,0 +1,1781 @@
+openapi: "3.1.0"
+info:
+  title: Backblaze S3-Compatible API
+  version: "1.0.0"
+  description: >-
+    The S3-Compatible API allows you to interact with Backblaze B2 Cloud Storage
+    using Amazon S3 syntax. This API supports standard S3 operations for object
+    and bucket management.
+
+servers:
+  - url: https://s3.us-west-004.backblazeb2.com
+    description: Backblaze S3-Compatible API (region-specific URL from b2_authorize_account)
+
+security:
+  - awsSignature: []
+
+tags:
+  - name: Object Operations
+    description: Upload, download, copy, delete, and manage individual objects
+  - name: Multipart Uploads
+    description: Upload large objects in parts
+  - name: Bucket Operations
+    description: Create, delete, configure, and list buckets
+
+paths:
+  /:
+    get:
+      operationId: s3_list_buckets
+      summary: List Buckets
+      description: Returns a list of all buckets owned by the authenticated sender of the request.
+      tags:
+        - Bucket Operations
+      security:
+        - awsSignature: []
+      responses:
+        "200":
+          description: Successfully retrieved the list of buckets.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/ListAllMyBucketsResult"
+        "403":
+          description: Access denied.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /{bucket}:
+    parameters:
+      - $ref: "#/components/parameters/BucketParam"
+    get:
+      operationId: s3_get_bucket
+      summary: Bucket-level GET operations
+      description: |
+        Performs various bucket-level read operations depending on the query parameters provided.
+
+        **List Objects** (default, no special query param): Returns objects in the bucket. Use `delimiter`, `marker`, `max-keys`, and `prefix` to filter and paginate.
+
+        **List Objects V2** (`list-type=2`): Returns objects using the V2 listing API. Supports `continuation-token`, `start-after`, and `fetch-owner`.
+
+        **List Object Versions** (`versions`): Returns all versions of objects in the bucket.
+
+        **Get Bucket ACL** (`acl`): Returns the access control list for the bucket.
+
+        **Get Bucket CORS** (`cors`): Returns the CORS configuration for the bucket.
+
+        **Get Bucket Encryption** (`encryption`): Returns the default encryption configuration.
+
+        **Get Bucket Location** (`location`): Returns the region (LocationConstraint) for the bucket.
+
+        **Get Bucket Versioning** (`versioning`): Returns the versioning state of the bucket.
+
+        **Get Object Lock Configuration** (`object-lock`): Returns the Object Lock configuration for the bucket.
+
+        **Get Lifecycle Configuration** (`lifecycle`): Returns the lifecycle configuration for the bucket.
+
+        **List Multipart Uploads** (`uploads`): Lists in-progress multipart uploads for the bucket.
+
+        **Get Bucket Logging** (`logging`): Returns the logging configuration for the bucket.
+      tags:
+        - Bucket Operations
+        - Multipart Uploads
+      security:
+        - awsSignature: []
+      parameters:
+        - name: delimiter
+          in: query
+          description: A delimiter is a character used to group keys. Used with List Objects, List Objects V2, List Object Versions, and List Multipart Uploads.
+          schema:
+            type: string
+        - name: encoding-type
+          in: query
+          description: Requests that the response encode the keys using the specified encoding type.
+          schema:
+            type: string
+            enum:
+              - url
+        - name: marker
+          in: query
+          description: Specifies the key to start with when listing objects (List Objects V1).
+          schema:
+            type: string
+        - name: max-keys
+          in: query
+          description: Maximum number of keys to return in the response. Default is 1000.
+          schema:
+            type: integer
+            default: 1000
+        - name: prefix
+          in: query
+          description: Limits the response to keys that begin with the specified prefix.
+          schema:
+            type: string
+        - name: list-type
+          in: query
+          description: Set to `2` to use the List Objects V2 API.
+          schema:
+            type: string
+            enum:
+              - "2"
+        - name: continuation-token
+          in: query
+          description: Token for pagination in List Objects V2. Obtained from `NextContinuationToken` in a previous response.
+          schema:
+            type: string
+        - name: fetch-owner
+          in: query
+          description: When true, includes the owner information in List Objects V2 results.
+          schema:
+            type: boolean
+        - name: start-after
+          in: query
+          description: Starts listing after this specified key in List Objects V2.
+          schema:
+            type: string
+        - name: versions
+          in: query
+          description: When present, lists all object versions in the bucket.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: key-marker
+          in: query
+          description: Specifies the key to start with when listing object versions or multipart uploads.
+          schema:
+            type: string
+        - name: version-id-marker
+          in: query
+          description: Specifies the version ID to start with when listing object versions.
+          schema:
+            type: string
+        - name: acl
+          in: query
+          description: When present, returns the bucket ACL.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: cors
+          in: query
+          description: When present, returns the bucket CORS configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: encryption
+          in: query
+          description: When present, returns the bucket default encryption configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: location
+          in: query
+          description: When present, returns the bucket location (region).
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: versioning
+          in: query
+          description: When present, returns the bucket versioning configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: object-lock
+          in: query
+          description: When present, returns the Object Lock configuration for the bucket.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: lifecycle
+          in: query
+          description: When present, returns the lifecycle configuration for the bucket.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: uploads
+          in: query
+          description: When present, lists in-progress multipart uploads.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: upload-id-marker
+          in: query
+          description: Together with `key-marker`, specifies the multipart upload after which listing should begin.
+          schema:
+            type: string
+        - name: max-uploads
+          in: query
+          description: Maximum number of multipart uploads to return. Default is 1000.
+          schema:
+            type: integer
+        - name: logging
+          in: query
+          description: When present, returns the bucket logging configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: |
+            Response varies based on the query parameters provided. Returns one of:
+            ListBucketResult, ListVersionsResult, AccessControlPolicy, CORSConfiguration,
+            ServerSideEncryptionConfiguration, LocationConstraint, VersioningConfiguration,
+            ObjectLockConfiguration, LifecycleConfiguration, ListMultipartUploadsResult,
+            or BucketLoggingStatus.
+          content:
+            application/xml:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/ListBucketResult"
+                  - $ref: "#/components/schemas/ListVersionsResult"
+                  - $ref: "#/components/schemas/AccessControlPolicy"
+                  - $ref: "#/components/schemas/CORSConfiguration"
+                  - $ref: "#/components/schemas/ServerSideEncryptionConfiguration"
+                  - $ref: "#/components/schemas/VersioningConfiguration"
+                  - $ref: "#/components/schemas/ObjectLockConfiguration"
+                  - $ref: "#/components/schemas/LifecycleConfiguration"
+                  - $ref: "#/components/schemas/ListMultipartUploadsResult"
+                  - $ref: "#/components/schemas/BucketLoggingStatus"
+        "404":
+          description: The specified bucket does not exist.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      operationId: s3_put_bucket
+      summary: Bucket-level PUT operations
+      description: |
+        Performs various bucket-level write operations depending on the query parameters provided.
+
+        **Create Bucket** (no special query param): Creates a new bucket. Send a `CreateBucketConfiguration` XML body with a `LocationConstraint` element specifying the region. Optionally include the `x-amz-acl` header to set the bucket ACL at creation time.
+
+        **Put Bucket ACL** (`acl`): Sets the access control list for the bucket. Requires `x-amz-acl` header set to `private` or `public-read`.
+
+        **Put Bucket CORS** (`cors`): Sets the CORS configuration for the bucket. Requires a `CORSConfiguration` XML body.
+
+        **Put Bucket Encryption** (`encryption`): Sets the default server-side encryption configuration. Requires a `ServerSideEncryptionConfiguration` XML body.
+
+        **Put Object Lock Configuration** (`object-lock`): Sets the Object Lock configuration for the bucket. Requires an `ObjectLockConfiguration` XML body.
+
+        **Put Lifecycle Configuration** (`lifecycle`): Sets the lifecycle configuration for the bucket. Requires a `LifecycleConfiguration` XML body.
+
+        **Put Bucket Logging** (`logging`): Sets the logging configuration for the bucket. Requires a `BucketLoggingStatus` XML body.
+      tags:
+        - Bucket Operations
+      security:
+        - awsSignature: []
+      parameters:
+        - name: acl
+          in: query
+          description: When present, sets the bucket ACL.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: cors
+          in: query
+          description: When present, sets the bucket CORS configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: encryption
+          in: query
+          description: When present, sets the bucket default encryption configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: object-lock
+          in: query
+          description: When present, sets the Object Lock configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: lifecycle
+          in: query
+          description: When present, sets the lifecycle configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: logging
+          in: query
+          description: When present, sets the logging configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: x-amz-acl
+          in: header
+          description: Canned ACL to apply. Used when creating a bucket or setting bucket ACL.
+          schema:
+            type: string
+            enum:
+              - private
+              - public-read
+      requestBody:
+        description: |
+          Request body varies by operation:
+          - **Create Bucket**: `CreateBucketConfiguration` XML with `LocationConstraint`
+          - **Put Bucket CORS**: `CORSConfiguration` XML
+          - **Put Bucket Encryption**: `ServerSideEncryptionConfiguration` XML
+          - **Put Object Lock Configuration**: `ObjectLockConfiguration` XML
+          - **Put Lifecycle Configuration**: `LifecycleConfiguration` XML
+          - **Put Bucket Logging**: `BucketLoggingStatus` XML
+        content:
+          application/xml:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/CreateBucketConfiguration"
+                - $ref: "#/components/schemas/CORSConfiguration"
+                - $ref: "#/components/schemas/ServerSideEncryptionConfiguration"
+                - $ref: "#/components/schemas/ObjectLockConfiguration"
+                - $ref: "#/components/schemas/LifecycleConfiguration"
+                - $ref: "#/components/schemas/BucketLoggingStatus"
+      responses:
+        "200":
+          description: Operation completed successfully. For Create Bucket, the `Location` header contains the bucket URL.
+          headers:
+            Location:
+              description: The URI of the newly created bucket (Create Bucket only).
+              schema:
+                type: string
+        "409":
+          description: Bucket already exists or is owned by another account.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    delete:
+      operationId: s3_delete_bucket
+      summary: Bucket-level DELETE operations
+      description: |
+        Performs various bucket-level delete operations depending on the query parameters provided.
+
+        **Delete Bucket** (no special query param): Deletes the specified bucket. The bucket must be empty.
+
+        **Delete Bucket CORS** (`cors`): Removes the CORS configuration from the bucket.
+
+        **Delete Bucket Encryption** (`encryption`): Removes the default encryption configuration from the bucket.
+
+        **Delete Lifecycle Configuration** (`lifecycle`): Removes the lifecycle configuration from the bucket.
+      tags:
+        - Bucket Operations
+      security:
+        - awsSignature: []
+      parameters:
+        - name: cors
+          in: query
+          description: When present, deletes the bucket CORS configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: encryption
+          in: query
+          description: When present, deletes the bucket default encryption configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: lifecycle
+          in: query
+          description: When present, deletes the lifecycle configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Successfully deleted the bucket or configuration.
+        "404":
+          description: The specified bucket does not exist.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "409":
+          description: The bucket is not empty.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    head:
+      operationId: s3_head_bucket
+      summary: Head Bucket
+      description: Determines if a bucket exists and if you have permission to access it. Returns 200 if the bucket exists and you have access, 404 if it does not exist, or 403 if you do not have permission.
+      tags:
+        - Bucket Operations
+      security:
+        - awsSignature: []
+      responses:
+        "200":
+          description: The bucket exists and you have permission to access it.
+        "403":
+          description: Access denied.
+        "404":
+          description: The specified bucket does not exist.
+
+    post:
+      operationId: s3_delete_objects
+      summary: Delete Objects
+      description: |
+        Deletes multiple objects from a bucket in a single request. The `delete` query parameter must be present. Send an XML body containing a `Delete` element with `Object` entries specifying the `Key` (and optionally `VersionId`) of each object to delete. Set `Quiet` to `true` to only receive error responses.
+      tags:
+        - Object Operations
+      security:
+        - awsSignature: []
+      parameters:
+        - name: delete
+          in: query
+          required: true
+          description: Must be present to indicate this is a Delete Objects request.
+          allowEmptyValue: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: XML containing the list of objects to delete.
+        content:
+          application/xml:
+            schema:
+              $ref: "#/components/schemas/DeleteRequest"
+      responses:
+        "200":
+          description: Successfully processed the delete request. Check the body for individual object results.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/DeleteResult"
+
+  /{bucket}/{key}:
+    parameters:
+      - $ref: "#/components/parameters/BucketParam"
+      - $ref: "#/components/parameters/KeyParam"
+    get:
+      operationId: s3_get_object
+      summary: Object-level GET operations
+      description: |
+        Performs various object-level read operations depending on the query parameters provided.
+
+        **Get Object** (default, no special query param): Retrieves the object data. Supports partial reads via the `Range` header. Use response-override query parameters to override Content-Type and other response headers.
+
+        **Get Object ACL** (`acl`): Returns the access control list for the object.
+
+        **Get Object Legal Hold** (`legal-hold`): Returns the Object Lock legal hold status for the object.
+
+        **Get Object Retention** (`retention`): Returns the Object Lock retention configuration for the object.
+
+        **List Parts** (`uploadId`): Lists the parts that have been uploaded for a specific multipart upload.
+      tags:
+        - Object Operations
+        - Multipart Uploads
+      security:
+        - awsSignature: []
+      parameters:
+        - name: versionId
+          in: query
+          description: The specific version of the object to retrieve.
+          schema:
+            type: string
+        - name: partNumber
+          in: query
+          description: Part number to retrieve. Used with Get Object to retrieve a specific part of a multipart object, or as `part-number-marker` for List Parts.
+          schema:
+            type: integer
+        - name: response-cache-control
+          in: query
+          description: Overrides the Cache-Control response header.
+          schema:
+            type: string
+        - name: response-content-disposition
+          in: query
+          description: Overrides the Content-Disposition response header.
+          schema:
+            type: string
+        - name: response-content-encoding
+          in: query
+          description: Overrides the Content-Encoding response header.
+          schema:
+            type: string
+        - name: response-content-language
+          in: query
+          description: Overrides the Content-Language response header.
+          schema:
+            type: string
+        - name: response-content-type
+          in: query
+          description: Overrides the Content-Type response header.
+          schema:
+            type: string
+        - name: response-expires
+          in: query
+          description: Overrides the Expires response header.
+          schema:
+            type: string
+        - name: Range
+          in: header
+          description: Downloads the specified range bytes of an object (e.g., `bytes=0-999`).
+          schema:
+            type: string
+        - name: x-backblaze-live-read-enabled
+          in: header
+          description: When set to `true`, enables live read mode. Allows reading an object while it is still being uploaded via multipart upload.
+          schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+        - name: acl
+          in: query
+          description: When present, returns the object ACL.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: legal-hold
+          in: query
+          description: When present, returns the object legal hold status.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: retention
+          in: query
+          description: When present, returns the object retention configuration.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: uploadId
+          in: query
+          description: When present, lists the parts uploaded for the specified multipart upload ID.
+          schema:
+            type: string
+        - name: max-parts
+          in: query
+          description: Maximum number of parts to return in a List Parts response.
+          schema:
+            type: integer
+        - name: part-number-marker
+          in: query
+          description: Specifies the part number after which listing should begin in a List Parts response.
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: |
+            Response varies by operation:
+            - **Get Object**: Binary content of the object with appropriate Content-Type header.
+            - **Get Object ACL**: XML AccessControlPolicy.
+            - **Get Object Legal Hold**: XML LegalHold with Status (ON or OFF).
+            - **Get Object Retention**: XML Retention with Mode and RetainUntilDate.
+            - **List Parts**: XML ListPartsResult.
+          headers:
+            ETag:
+              description: Entity tag for the object.
+              schema:
+                type: string
+            x-amz-version-id:
+              description: Version ID of the object (if versioning is enabled).
+              schema:
+                type: string
+            Content-Type:
+              description: The MIME type of the object.
+              schema:
+                type: string
+            Content-Length:
+              description: Size of the object in bytes.
+              schema:
+                type: integer
+            Last-Modified:
+              description: Date and time the object was last modified.
+              schema:
+                type: string
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+            application/xml:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/AccessControlPolicy"
+                  - $ref: "#/components/schemas/LegalHold"
+                  - $ref: "#/components/schemas/Retention"
+                  - $ref: "#/components/schemas/ListPartsResult"
+        "206":
+          description: Partial content returned when a Range header was specified.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: The specified object does not exist.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    put:
+      operationId: s3_put_object
+      summary: Object-level PUT operations
+      description: |
+        Performs various object-level write operations depending on query parameters and headers.
+
+        **Put Object** (default, no special query params or headers): Uploads an object to the bucket. The request body contains the file data. Use headers to set metadata, caching, content type, encryption, and Object Lock settings.
+
+        **Copy Object** (when `x-amz-copy-source` header is present, no special query params): Copies an object from a source bucket/key to the destination. The source is specified in the `x-amz-copy-source` header as `/source-bucket/source-key`.
+
+        **Put Object ACL** (`acl`): Sets the access control list for the object. Requires the `x-amz-acl` header set to `private` or `public-read`.
+
+        **Put Object Legal Hold** (`legal-hold`): Sets the Object Lock legal hold on the object. Requires a `LegalHold` XML body.
+
+        **Put Object Retention** (`retention`): Sets the Object Lock retention configuration on the object. Requires a `Retention` XML body.
+
+        **Upload Part** (`partNumber` + `uploadId`, no `x-amz-copy-source`): Uploads a part in a multipart upload. The request body contains the part data.
+
+        **Upload Part Copy** (`partNumber` + `uploadId` + `x-amz-copy-source`): Copies data from a source object as a part in a multipart upload.
+      tags:
+        - Object Operations
+        - Multipart Uploads
+      security:
+        - awsSignature: []
+      parameters:
+        - name: acl
+          in: query
+          description: When present, sets the object ACL.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: legal-hold
+          in: query
+          description: When present, sets the object legal hold.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: retention
+          in: query
+          description: When present, sets the object retention.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: partNumber
+          in: query
+          description: Part number for multipart upload (1 to 10,000).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+        - name: uploadId
+          in: query
+          description: Upload ID for multipart upload operations.
+          schema:
+            type: string
+        - name: x-amz-copy-source
+          in: header
+          description: Specifies the source object for a copy operation, in the form `/source-bucket/source-key`. When present, the operation is a Copy Object or Upload Part Copy.
+          schema:
+            type: string
+        - name: x-amz-copy-source-range
+          in: header
+          description: The range of bytes to copy from the source object (Upload Part Copy only), e.g., `bytes=0-999`.
+          schema:
+            type: string
+        - name: Cache-Control
+          in: header
+          description: Specifies caching behavior for the object.
+          schema:
+            type: string
+        - name: Content-Disposition
+          in: header
+          description: Specifies presentational information for the object.
+          schema:
+            type: string
+        - name: Content-Encoding
+          in: header
+          description: Specifies content encoding of the object (e.g., gzip).
+          schema:
+            type: string
+        - name: Content-Language
+          in: header
+          description: Language of the object content.
+          schema:
+            type: string
+        - name: Content-Length
+          in: header
+          description: Size of the object data in bytes.
+          schema:
+            type: integer
+        - name: Content-Type
+          in: header
+          description: MIME type of the object.
+          schema:
+            type: string
+        - name: Expires
+          in: header
+          description: Date and time at which the object should no longer be cached.
+          schema:
+            type: string
+        - name: x-amz-acl
+          in: header
+          description: Canned ACL for the object (private or public-read). Used with Put Object and Put Object ACL.
+          schema:
+            type: string
+            enum:
+              - private
+              - public-read
+        - name: x-amz-object-lock-legal-hold
+          in: header
+          description: Specifies whether a legal hold will be applied to the uploaded object (ON or OFF).
+          schema:
+            type: string
+            enum:
+              - "ON"
+              - "OFF"
+        - name: x-amz-object-lock-mode
+          in: header
+          description: Object Lock retention mode (GOVERNANCE or COMPLIANCE).
+          schema:
+            type: string
+            enum:
+              - GOVERNANCE
+              - COMPLIANCE
+        - name: x-amz-object-lock-retain-until-date
+          in: header
+          description: Date and time until which the object is retained in ISO 8601 format.
+          schema:
+            type: string
+            format: date-time
+        - name: x-amz-server-side-encryption
+          in: header
+          description: Server-side encryption algorithm (e.g., AES256).
+          schema:
+            type: string
+            enum:
+              - AES256
+        - name: x-amz-server-side-encryption-customer-algorithm
+          in: header
+          description: SSE-C algorithm. Must be AES256 when using customer-provided keys.
+          schema:
+            type: string
+            enum:
+              - AES256
+        - name: x-amz-server-side-encryption-customer-key
+          in: header
+          description: Base64-encoded 256-bit encryption key for SSE-C.
+          schema:
+            type: string
+        - name: x-amz-expected-bucket-owner
+          in: header
+          description: The account ID of the expected bucket owner.
+          schema:
+            type: string
+      requestBody:
+        description: |
+          Request body varies by operation:
+          - **Put Object / Upload Part**: Binary file content.
+          - **Put Object Legal Hold**: XML `LegalHold` element with `Status`.
+          - **Put Object Retention**: XML `Retention` element with `Mode` and `RetainUntilDate`.
+          - **Copy Object / Put Object ACL / Upload Part Copy**: No body required.
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+          application/xml:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/LegalHold"
+                - $ref: "#/components/schemas/Retention"
+      responses:
+        "200":
+          description: |
+            Response varies by operation:
+            - **Put Object**: Returns ETag and optional version ID in headers.
+            - **Copy Object**: Returns XML CopyObjectResult with ETag and LastModified.
+            - **Put Object ACL / Put Object Legal Hold / Put Object Retention**: Empty body.
+            - **Upload Part**: Returns ETag in header.
+            - **Upload Part Copy**: Returns XML CopyPartResult with ETag and LastModified.
+          headers:
+            ETag:
+              description: Entity tag for the uploaded object or part.
+              schema:
+                type: string
+            x-amz-version-id:
+              description: Version ID of the object (if versioning is enabled).
+              schema:
+                type: string
+          content:
+            application/xml:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/CopyObjectResult"
+                  - $ref: "#/components/schemas/CopyPartResult"
+
+    delete:
+      operationId: s3_delete_object
+      summary: Object-level DELETE operations
+      description: |
+        Performs object-level delete operations depending on the query parameters.
+
+        **Delete Object** (no `uploadId`): Deletes the specified object. If versioning is enabled, use the `versionId` query parameter to delete a specific version. Otherwise, a delete marker is created.
+
+        **Abort Multipart Upload** (`uploadId`): Aborts an in-progress multipart upload, freeing the uploaded parts.
+      tags:
+        - Object Operations
+        - Multipart Uploads
+      security:
+        - awsSignature: []
+      parameters:
+        - name: versionId
+          in: query
+          description: The specific version of the object to delete.
+          schema:
+            type: string
+        - name: uploadId
+          in: query
+          description: When present, aborts the specified multipart upload instead of deleting the object.
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Successfully deleted the object or aborted the multipart upload.
+          headers:
+            x-amz-version-id:
+              description: Version ID of the deleted object or the created delete marker.
+              schema:
+                type: string
+            x-amz-delete-marker:
+              description: Indicates whether a delete marker was created.
+              schema:
+                type: boolean
+        "404":
+          description: The specified object or multipart upload does not exist.
+          content:
+            application/xml:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+    head:
+      operationId: s3_head_object
+      summary: Head Object
+      description: Retrieves metadata for an object without returning the object data. The response is identical to a Get Object request but without the response body.
+      tags:
+        - Object Operations
+      security:
+        - awsSignature: []
+      parameters:
+        - name: versionId
+          in: query
+          description: The specific version of the object to retrieve metadata for.
+          schema:
+            type: string
+        - name: partNumber
+          in: query
+          description: Part number to check. Returns metadata about the specified part of a multipart object.
+          schema:
+            type: integer
+        - name: x-backblaze-live-read-enabled
+          in: header
+          description: When set to `true`, enables live read mode for checking objects still being uploaded.
+          schema:
+            type: string
+            enum:
+              - "true"
+              - "false"
+      responses:
+        "200":
+          description: Successfully retrieved object metadata. All metadata is in response headers; there is no response body.
+          headers:
+            ETag:
+              description: Entity tag for the object.
+              schema:
+                type: string
+            Content-Type:
+              description: MIME type of the object.
+              schema:
+                type: string
+            Content-Length:
+              description: Size of the object in bytes.
+              schema:
+                type: integer
+            Last-Modified:
+              description: Date and time the object was last modified.
+              schema:
+                type: string
+            x-amz-version-id:
+              description: Version ID of the object (if versioning is enabled).
+              schema:
+                type: string
+            x-amz-object-lock-mode:
+              description: Object Lock retention mode.
+              schema:
+                type: string
+            x-amz-object-lock-retain-until-date:
+              description: Object Lock retention date.
+              schema:
+                type: string
+            x-amz-object-lock-legal-hold:
+              description: Object Lock legal hold status (ON or OFF).
+              schema:
+                type: string
+            x-amz-server-side-encryption:
+              description: Server-side encryption algorithm used.
+              schema:
+                type: string
+        "404":
+          description: The specified object does not exist.
+
+    post:
+      operationId: s3_post_object
+      summary: Object-level POST operations
+      description: |
+        Performs various object-level POST operations depending on the query parameters.
+
+        **Create Multipart Upload** (`uploads`): Initiates a multipart upload and returns an upload ID. Use optional headers for encryption, Object Lock, and content metadata.
+
+        **Complete Multipart Upload** (`uploadId`): Completes a multipart upload by assembling previously uploaded parts. Send a `CompleteMultipartUpload` XML body listing the parts with their part numbers and ETags.
+      tags:
+        - Multipart Uploads
+      security:
+        - awsSignature: []
+      parameters:
+        - name: uploads
+          in: query
+          description: When present, initiates a new multipart upload.
+          allowEmptyValue: true
+          schema:
+            type: string
+        - name: uploadId
+          in: query
+          description: When present, completes the specified multipart upload.
+          schema:
+            type: string
+        - name: Cache-Control
+          in: header
+          description: Specifies caching behavior for the object (Create Multipart Upload).
+          schema:
+            type: string
+        - name: Content-Disposition
+          in: header
+          description: Specifies presentational information for the object (Create Multipart Upload).
+          schema:
+            type: string
+        - name: Content-Encoding
+          in: header
+          description: Specifies content encoding (Create Multipart Upload).
+          schema:
+            type: string
+        - name: Content-Language
+          in: header
+          description: Language of the content (Create Multipart Upload).
+          schema:
+            type: string
+        - name: Content-Type
+          in: header
+          description: MIME type of the object (Create Multipart Upload).
+          schema:
+            type: string
+        - name: Expires
+          in: header
+          description: Expiration date for caching (Create Multipart Upload).
+          schema:
+            type: string
+        - name: x-amz-acl
+          in: header
+          description: Canned ACL to apply to the object (Create Multipart Upload).
+          schema:
+            type: string
+            enum:
+              - private
+              - public-read
+        - name: x-amz-object-lock-legal-hold
+          in: header
+          description: Legal hold status for the object (Create Multipart Upload).
+          schema:
+            type: string
+            enum:
+              - "ON"
+              - "OFF"
+        - name: x-amz-object-lock-mode
+          in: header
+          description: Object Lock retention mode (Create Multipart Upload).
+          schema:
+            type: string
+            enum:
+              - GOVERNANCE
+              - COMPLIANCE
+        - name: x-amz-object-lock-retain-until-date
+          in: header
+          description: Retention until date in ISO 8601 format (Create Multipart Upload).
+          schema:
+            type: string
+            format: date-time
+        - name: x-amz-server-side-encryption
+          in: header
+          description: Server-side encryption algorithm (Create Multipart Upload).
+          schema:
+            type: string
+            enum:
+              - AES256
+        - name: x-amz-server-side-encryption-customer-algorithm
+          in: header
+          description: SSE-C algorithm (Create Multipart Upload).
+          schema:
+            type: string
+            enum:
+              - AES256
+        - name: x-amz-server-side-encryption-customer-key
+          in: header
+          description: Base64-encoded encryption key for SSE-C (Create Multipart Upload).
+          schema:
+            type: string
+      requestBody:
+        description: For Complete Multipart Upload, send an XML `CompleteMultipartUpload` body listing the parts. For Create Multipart Upload, no body is needed.
+        content:
+          application/xml:
+            schema:
+              $ref: "#/components/schemas/CompleteMultipartUploadRequest"
+      responses:
+        "200":
+          description: |
+            Response varies by operation:
+            - **Create Multipart Upload**: XML InitiateMultipartUploadResult with Bucket, Key, and UploadId.
+            - **Complete Multipart Upload**: XML CompleteMultipartUploadResult with Location, Bucket, Key, and ETag.
+          content:
+            application/xml:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/InitiateMultipartUploadResult"
+                  - $ref: "#/components/schemas/CompleteMultipartUploadResult"
+
+components:
+  securitySchemes:
+    awsSignature:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: AWS Signature Version 4 authentication
+
+  parameters:
+    BucketParam:
+      name: bucket
+      in: path
+      required: true
+      description: The name of the bucket.
+      schema:
+        type: string
+    KeyParam:
+      name: key
+      in: path
+      required: true
+      description: The object key. May contain forward slashes for directory-like organization.
+      schema:
+        type: string
+
+  schemas:
+    Error:
+      type: object
+      xml:
+        name: Error
+      properties:
+        Code:
+          type: string
+          description: The error code (e.g., NoSuchBucket, NoSuchKey, AccessDenied).
+        Message:
+          type: string
+          description: Human-readable error message.
+        Resource:
+          type: string
+          description: The resource associated with the error.
+        RequestId:
+          type: string
+          description: The unique request ID for debugging.
+
+    Owner:
+      type: object
+      properties:
+        ID:
+          type: string
+          description: The canonical user ID of the owner.
+        DisplayName:
+          type: string
+          description: The display name of the owner.
+
+    ListAllMyBucketsResult:
+      type: object
+      xml:
+        name: ListAllMyBucketsResult
+      properties:
+        Owner:
+          $ref: "#/components/schemas/Owner"
+        Buckets:
+          type: object
+          properties:
+            Bucket:
+              type: array
+              items:
+                type: object
+                properties:
+                  Name:
+                    type: string
+                    description: The name of the bucket.
+                  CreationDate:
+                    type: string
+                    format: date-time
+                    description: Date the bucket was created.
+
+    ListBucketResult:
+      type: object
+      xml:
+        name: ListBucketResult
+      description: Response for List Objects (V1 and V2) operations.
+      properties:
+        Name:
+          type: string
+          description: The bucket name.
+        Prefix:
+          type: string
+        Marker:
+          type: string
+          description: V1 only. The marker used in the request.
+        NextMarker:
+          type: string
+          description: V1 only. Use as the marker in the next request to continue listing.
+        KeyCount:
+          type: integer
+          description: V2 only. The number of keys returned.
+        MaxKeys:
+          type: integer
+        IsTruncated:
+          type: boolean
+          description: Indicates whether the response is truncated.
+        ContinuationToken:
+          type: string
+          description: V2 only. The continuation token from the request.
+        NextContinuationToken:
+          type: string
+          description: V2 only. Use as continuation-token in the next request.
+        StartAfter:
+          type: string
+          description: V2 only. The start-after value from the request.
+        Delimiter:
+          type: string
+        EncodingType:
+          type: string
+        Contents:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Contents
+            properties:
+              Key:
+                type: string
+              LastModified:
+                type: string
+                format: date-time
+              ETag:
+                type: string
+              Size:
+                type: integer
+              StorageClass:
+                type: string
+              Owner:
+                $ref: "#/components/schemas/Owner"
+        CommonPrefixes:
+          type: array
+          items:
+            type: object
+            xml:
+              name: CommonPrefixes
+            properties:
+              Prefix:
+                type: string
+
+    ListVersionsResult:
+      type: object
+      xml:
+        name: ListVersionsResult
+      properties:
+        Name:
+          type: string
+        Prefix:
+          type: string
+        KeyMarker:
+          type: string
+        VersionIdMarker:
+          type: string
+        NextKeyMarker:
+          type: string
+        NextVersionIdMarker:
+          type: string
+        MaxKeys:
+          type: integer
+        IsTruncated:
+          type: boolean
+        Delimiter:
+          type: string
+        EncodingType:
+          type: string
+        Version:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Version
+            properties:
+              Key:
+                type: string
+              VersionId:
+                type: string
+              IsLatest:
+                type: boolean
+              LastModified:
+                type: string
+                format: date-time
+              ETag:
+                type: string
+              Size:
+                type: integer
+              StorageClass:
+                type: string
+              Owner:
+                $ref: "#/components/schemas/Owner"
+        DeleteMarker:
+          type: array
+          items:
+            type: object
+            xml:
+              name: DeleteMarker
+            properties:
+              Key:
+                type: string
+              VersionId:
+                type: string
+              IsLatest:
+                type: boolean
+              LastModified:
+                type: string
+                format: date-time
+              Owner:
+                $ref: "#/components/schemas/Owner"
+        CommonPrefixes:
+          type: array
+          items:
+            type: object
+            xml:
+              name: CommonPrefixes
+            properties:
+              Prefix:
+                type: string
+
+    AccessControlPolicy:
+      type: object
+      xml:
+        name: AccessControlPolicy
+      properties:
+        Owner:
+          $ref: "#/components/schemas/Owner"
+        AccessControlList:
+          type: object
+          properties:
+            Grant:
+              type: array
+              items:
+                type: object
+                xml:
+                  name: Grant
+                properties:
+                  Grantee:
+                    type: object
+                    properties:
+                      ID:
+                        type: string
+                      DisplayName:
+                        type: string
+                      URI:
+                        type: string
+                        description: URI for predefined groups (e.g., http://acs.amazonaws.com/groups/global/AllUsers).
+                      type:
+                        type: string
+                        xml:
+                          attribute: true
+                        description: The type of grantee (CanonicalUser or Group).
+                  Permission:
+                    type: string
+                    description: The permission granted.
+                    enum:
+                      - FULL_CONTROL
+                      - READ
+                      - WRITE
+                      - READ_ACP
+                      - WRITE_ACP
+
+    CopyObjectResult:
+      type: object
+      xml:
+        name: CopyObjectResult
+      properties:
+        ETag:
+          type: string
+          description: The ETag of the copied object.
+        LastModified:
+          type: string
+          format: date-time
+          description: The date the object was last modified.
+
+    DeleteRequest:
+      type: object
+      xml:
+        name: Delete
+      description: Request body for the Delete Objects operation.
+      properties:
+        Quiet:
+          type: boolean
+          description: When true, only errors are returned in the response.
+        Object:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Object
+            properties:
+              Key:
+                type: string
+                description: Key of the object to delete.
+              VersionId:
+                type: string
+                description: Version ID of the specific object version to delete.
+            required:
+              - Key
+      required:
+        - Object
+
+    DeleteResult:
+      type: object
+      xml:
+        name: DeleteResult
+      properties:
+        Deleted:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Deleted
+            properties:
+              Key:
+                type: string
+              VersionId:
+                type: string
+              DeleteMarker:
+                type: boolean
+              DeleteMarkerVersionId:
+                type: string
+        Error:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Error
+            properties:
+              Key:
+                type: string
+              VersionId:
+                type: string
+              Code:
+                type: string
+              Message:
+                type: string
+
+    LegalHold:
+      type: object
+      xml:
+        name: LegalHold
+      properties:
+        Status:
+          type: string
+          description: The legal hold status.
+          enum:
+            - "ON"
+            - "OFF"
+      required:
+        - Status
+
+    Retention:
+      type: object
+      xml:
+        name: Retention
+      properties:
+        Mode:
+          type: string
+          description: The retention mode.
+          enum:
+            - GOVERNANCE
+            - COMPLIANCE
+        RetainUntilDate:
+          type: string
+          format: date-time
+          description: The date until which the object is retained.
+      required:
+        - Mode
+        - RetainUntilDate
+
+    CompleteMultipartUploadRequest:
+      type: object
+      xml:
+        name: CompleteMultipartUpload
+      description: Request body for completing a multipart upload.
+      properties:
+        Part:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Part
+            properties:
+              PartNumber:
+                type: integer
+                description: Part number that identifies the part (1 to 10,000).
+              ETag:
+                type: string
+                description: ETag returned when the part was uploaded.
+            required:
+              - PartNumber
+              - ETag
+      required:
+        - Part
+
+    CompleteMultipartUploadResult:
+      type: object
+      xml:
+        name: CompleteMultipartUploadResult
+      properties:
+        Location:
+          type: string
+          description: The URI of the completed object.
+        Bucket:
+          type: string
+          description: The name of the bucket.
+        Key:
+          type: string
+          description: The object key.
+        ETag:
+          type: string
+          description: Entity tag for the completed object.
+
+    InitiateMultipartUploadResult:
+      type: object
+      xml:
+        name: InitiateMultipartUploadResult
+      properties:
+        Bucket:
+          type: string
+          description: The name of the bucket.
+        Key:
+          type: string
+          description: The object key.
+        UploadId:
+          type: string
+          description: The upload ID to use for subsequent part uploads and completion.
+
+    CopyPartResult:
+      type: object
+      xml:
+        name: CopyPartResult
+      properties:
+        ETag:
+          type: string
+          description: The ETag of the copied part.
+        LastModified:
+          type: string
+          format: date-time
+          description: The date the part was last modified.
+
+    ListMultipartUploadsResult:
+      type: object
+      xml:
+        name: ListMultipartUploadsResult
+      properties:
+        Bucket:
+          type: string
+        KeyMarker:
+          type: string
+        UploadIdMarker:
+          type: string
+        NextKeyMarker:
+          type: string
+          description: Use as key-marker in the next request if IsTruncated is true.
+        NextUploadIdMarker:
+          type: string
+          description: Use as upload-id-marker in the next request if IsTruncated is true.
+        MaxUploads:
+          type: integer
+        IsTruncated:
+          type: boolean
+        Prefix:
+          type: string
+        Delimiter:
+          type: string
+        Upload:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Upload
+            properties:
+              Key:
+                type: string
+              UploadId:
+                type: string
+              Initiator:
+                $ref: "#/components/schemas/Owner"
+              Owner:
+                $ref: "#/components/schemas/Owner"
+              StorageClass:
+                type: string
+              Initiated:
+                type: string
+                format: date-time
+        CommonPrefixes:
+          type: array
+          items:
+            type: object
+            xml:
+              name: CommonPrefixes
+            properties:
+              Prefix:
+                type: string
+
+    ListPartsResult:
+      type: object
+      xml:
+        name: ListPartsResult
+      properties:
+        Bucket:
+          type: string
+        Key:
+          type: string
+        UploadId:
+          type: string
+        PartNumberMarker:
+          type: integer
+        NextPartNumberMarker:
+          type: integer
+          description: Use as part-number-marker in the next request if IsTruncated is true.
+        MaxParts:
+          type: integer
+        IsTruncated:
+          type: boolean
+        Part:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Part
+            properties:
+              PartNumber:
+                type: integer
+              LastModified:
+                type: string
+                format: date-time
+              ETag:
+                type: string
+              Size:
+                type: integer
+
+    CreateBucketConfiguration:
+      type: object
+      xml:
+        name: CreateBucketConfiguration
+      properties:
+        LocationConstraint:
+          type: string
+          description: The region where the bucket should be created (e.g., us-west-004).
+
+    CORSConfiguration:
+      type: object
+      xml:
+        name: CORSConfiguration
+      properties:
+        CORSRule:
+          type: array
+          items:
+            type: object
+            xml:
+              name: CORSRule
+            properties:
+              AllowedOrigin:
+                type: array
+                items:
+                  type: string
+                  xml:
+                    name: AllowedOrigin
+              AllowedMethod:
+                type: array
+                items:
+                  type: string
+                  xml:
+                    name: AllowedMethod
+                  enum:
+                    - GET
+                    - PUT
+                    - POST
+                    - DELETE
+                    - HEAD
+              AllowedHeader:
+                type: array
+                items:
+                  type: string
+                  xml:
+                    name: AllowedHeader
+              ExposeHeader:
+                type: array
+                items:
+                  type: string
+                  xml:
+                    name: ExposeHeader
+              MaxAgeSeconds:
+                type: integer
+                description: Time in seconds that the browser caches the preflight response.
+
+    ServerSideEncryptionConfiguration:
+      type: object
+      xml:
+        name: ServerSideEncryptionConfiguration
+      properties:
+        Rule:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Rule
+            properties:
+              ApplyServerSideEncryptionByDefault:
+                type: object
+                properties:
+                  SSEAlgorithm:
+                    type: string
+                    description: Server-side encryption algorithm.
+                    enum:
+                      - AES256
+
+    VersioningConfiguration:
+      type: object
+      xml:
+        name: VersioningConfiguration
+      properties:
+        Status:
+          type: string
+          description: The versioning state of the bucket.
+          enum:
+            - Enabled
+            - Suspended
+
+    ObjectLockConfiguration:
+      type: object
+      xml:
+        name: ObjectLockConfiguration
+      properties:
+        ObjectLockEnabled:
+          type: string
+          description: Indicates whether Object Lock is enabled.
+          enum:
+            - Enabled
+        Rule:
+          type: object
+          properties:
+            DefaultRetention:
+              type: object
+              properties:
+                Mode:
+                  type: string
+                  description: Default retention mode.
+                  enum:
+                    - GOVERNANCE
+                    - COMPLIANCE
+                Days:
+                  type: integer
+                  description: Number of days for the default retention period. Mutually exclusive with Years.
+                Years:
+                  type: integer
+                  description: Number of years for the default retention period. Mutually exclusive with Days.
+
+    LifecycleConfiguration:
+      type: object
+      xml:
+        name: LifecycleConfiguration
+      properties:
+        Rule:
+          type: array
+          items:
+            type: object
+            xml:
+              name: Rule
+            properties:
+              ID:
+                type: string
+                description: Unique identifier for the rule.
+              Status:
+                type: string
+                description: Whether the rule is enabled.
+                enum:
+                  - Enabled
+                  - Disabled
+              Filter:
+                type: object
+                properties:
+                  Prefix:
+                    type: string
+                    description: Object key prefix that identifies objects the rule applies to.
+              Expiration:
+                type: object
+                properties:
+                  Days:
+                    type: integer
+                    description: Number of days after creation when the object expires.
+                  Date:
+                    type: string
+                    format: date-time
+                    description: The date when the object expires.
+              AbortIncompleteMultipartUpload:
+                type: object
+                properties:
+                  DaysAfterInitiation:
+                    type: integer
+                    description: Number of days after initiation that incomplete multipart uploads are aborted.
+              Transition:
+                type: array
+                items:
+                  type: object
+                  xml:
+                    name: Transition
+                  properties:
+                    Days:
+                      type: integer
+                      description: Number of days after creation when the transition occurs.
+                    StorageClass:
+                      type: string
+                      description: The storage class to transition to.
+
+    BucketLoggingStatus:
+      type: object
+      xml:
+        name: BucketLoggingStatus
+      properties:
+        LoggingEnabled:
+          type: object
+          description: Container for logging information. Omit to disable logging.
+          properties:
+            TargetBucket:
+              type: string
+              description: The name of the bucket where log files are stored.
+            TargetPrefix:
+              type: string
+              description: A prefix for all log object keys.
+
+    LocationConstraint:
+      type: object
+      xml:
+        name: LocationConstraint
+      description: The region where the bucket resides.
+      properties:
+        LocationConstraint:
+          type: string
+          description: The region identifier (e.g., us-west-004).

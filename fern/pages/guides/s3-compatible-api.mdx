@@ -1,0 +1,69 @@
+---
+title: S3-Compatible API
+description: Use Amazon S3 syntax to interact with Backblaze B2 Cloud Storage
+---
+
+The Backblaze B2 Cloud Storage S3-Compatible API allows you to interact with Backblaze B2 using Amazon S3 syntax. If your application is already written to use the S3 API, Backblaze B2 will work with minimal code changes.
+
+## Benefits
+
+- Performance will be just as good, and you'll get all the benefits of Backblaze B2
+- You can use your existing tools that are written to the S3 API
+- You do not have to learn a new API
+
+## Authentication
+
+The S3-Compatible API uses AWS Signature Version 4 for authentication. To get started:
+
+1. Create an application key via the Backblaze web UI or the B2 Native API
+2. Use the `applicationKeyId` as your AWS Access Key ID
+3. Use the `applicationKey` as your AWS Secret Access Key
+4. Set the region to your account's region (e.g., `us-west-004`)
+5. Set the endpoint URL to `https://s3.{region}.backblazeb2.com`
+
+## Naming Restrictions
+
+The S3-Compatible API features slightly different restrictions on file and bucket names than the AWS S3 API. Refer to the [Buckets](https://www.backblaze.com/docs/cloud-storage-buckets) and [Files](https://www.backblaze.com/docs/cloud-storage-files) documentation for naming restrictions.
+
+## Access Control Lists
+
+The S3-Compatible API features limited support for access control lists (ACLs). Get Object ACL and Get Bucket ACL calls will work as expected. However, object-level ACLs are not supported — a Get Object ACL call returns the ACL for the bucket in which the object is contained.
+
+- If a bucket is **private**, the ACL returned for the bucket and any files within the bucket is `private`
+- If a bucket is **public**, the ACL returned for the bucket and any files within the bucket is `public-read`
+
+The Put Bucket ACL call supports changing between `private` and `public-read` only.
+
+## Pre-Signed URLs
+
+The S3-Compatible API supports pre-signed URLs for downloading and uploading. You can generate pre-signed URLs using:
+
+- AWS CLI
+- AWS Tools for PowerShell
+- s3cmd
+- AWS SDKs
+
+## Server-Side Encryption
+
+The S3-Compatible API supports server-side encryption using either:
+
+- **SSE-B2** — Backblaze-managed keys
+- **SSE-C** — Customer-managed keys
+
+## Copy Object and Tagging
+
+The S3-Compatible API does not fully support object tagging. The `x-amz-tagging-directive` header is allowed on the Copy Object API, but it will be ignored. The `x-amz-tagging` header will be explicitly rejected if included on Copy Object or Put Object API calls.
+
+## Unsupported Features
+
+The S3-Compatible API does not currently support:
+
+- Browser-based uploads to pre-signed URLs using `POST`
+- Website Configuration
+- Object Tagging
+- IAM Roles
+- ACLs (beyond the limited support described above)
+
+## IPv6 Support
+
+The S3-Compatible API supports IPv6. No changes to your code are required to use IPv6 addresses with Backblaze B2. IPv4 continues to be supported.

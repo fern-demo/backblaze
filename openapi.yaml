@@ -1,0 +1,3217 @@
+openapi: 3.1.0
+info:
+  title: Backblaze B2 Cloud Storage API
+  version: "4.0.0"
+  description: |
+    Backblaze B2 Cloud Storage API provides two custom API suites:
+
+    - **B2 Native API** — A custom API for interacting with Backblaze B2 Cloud Storage including file upload/download, bucket management, and application key management.
+    - **Partner API** — Enables Backblaze partners to programmatically create and manage Backblaze B2 Cloud Storage accounts and groups.
+
+    Backblaze also offers an **S3-Compatible API** (not included in this spec) which follows the Amazon S3 syntax.
+
+    ## Authentication
+
+    The B2 Native API uses application keys to authenticate requests. Call `b2_authorize_account` with HTTP Basic authentication to obtain an authorization token and base URLs for subsequent API calls. The authorization token is valid for at most 24 hours.
+
+    ## API Base URL
+
+    The base URL for most B2 Native API operations is returned by the `b2_authorize_account` call (e.g., `https://apiNNN.backblazeb2.com`).
+
+    ## Error Handling
+
+    All error responses share a common JSON structure with `status`, `code`, and `message` fields.
+  contact:
+    name: Backblaze
+    url: https://www.backblaze.com
+  license:
+    name: Proprietary
+    url: https://www.backblaze.com/company/policy/terms
+
+servers:
+  - url: https://api.backblazeb2.com
+    description: Backblaze B2 API (actual URL returned by b2_authorize_account)
+
+tags:
+  - name: Authentication
+    description: Authorize and obtain API tokens
+  - name: Buckets
+    description: Create, delete, update, and list buckets
+  - name: Files
+    description: Upload, download, copy, delete, list, and manage files
+  - name: Large Files
+    description: Multipart upload operations for large files
+  - name: Keys
+    description: Create, delete, and list application keys
+  - name: Notifications
+    description: Bucket event notification rules
+  - name: Partner API
+    description: Partner account and group management
+
+paths:
+  # ──────────────────────────────────────────────
+  # Authentication
+  # ──────────────────────────────────────────────
+  /b2api/v4/b2_authorize_account:
+    get:
+      operationId: b2_authorize_account
+      summary: Authorize account
+      description: |
+        Returns an authorization token that can be used for subsequent API calls, and a URL that should be used as the base URL for subsequent API calls. You can use either the master application key or a normal application key. The account ID can be used in place of the master application key ID.
+      tags:
+        - Authentication
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationBasic'
+      responses:
+        "200":
+          description: Authorization successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizeAccountResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: |
+            Unauthorized. The `applicationKeyId` and/or the `applicationKey` are wrong, or the key is only valid for a later API version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  # ──────────────────────────────────────────────
+  # Buckets
+  # ──────────────────────────────────────────────
+  /b2api/v4/b2_create_bucket:
+    post:
+      operationId: b2_create_bucket
+      summary: Create a bucket
+      description: |
+        Creates a new bucket. Bucket names must be globally unique, 6–63 characters, consisting of letters, digits, and hyphens. Names cannot start with `b2-`. There is a limit of 100 buckets per account.
+      tags:
+        - Buckets
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountId
+                - bucketName
+                - bucketType
+              properties:
+                accountId:
+                  type: string
+                  description: Your account ID.
+                  example: "ACCOUNT_ID"
+                bucketName:
+                  type: string
+                  description: The name for the new bucket. Must be globally unique.
+                  minLength: 6
+                  maxLength: 63
+                  example: "my-unique-bucket"
+                bucketType:
+                  type: string
+                  description: Bucket visibility type.
+                  enum:
+                    - allPublic
+                    - allPrivate
+                  example: "allPrivate"
+                bucketInfo:
+                  type: object
+                  description: User-defined key/value metadata for the bucket.
+                  additionalProperties:
+                    type: string
+                corsRules:
+                  type: array
+                  description: Initial CORS rules for the bucket.
+                  items:
+                    $ref: '#/components/schemas/CorsRule'
+                fileLockEnabled:
+                  type: boolean
+                  description: Enables Object Lock on the bucket. Requires `writeBucketRetentions` capability.
+                  default: false
+                lifecycleRules:
+                  type: array
+                  description: Initial lifecycle rules for the bucket.
+                  items:
+                    $ref: '#/components/schemas/LifecycleRule'
+                defaultServerSideEncryption:
+                  $ref: '#/components/schemas/ServerSideEncryptionSetting'
+                replicationConfiguration:
+                  $ref: '#/components/schemas/ReplicationConfiguration'
+      responses:
+        "200":
+          description: Bucket created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bucket'
+        "400":
+          description: |
+            Bad request. Possible codes: `bad_bucket_id`, `bad_request`, `too_many_buckets`, `duplicate_bucket_name`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+        "503":
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /b2api/v4/b2_delete_bucket:
+    post:
+      operationId: b2_delete_bucket
+      summary: Delete a bucket
+      description: |
+        Deletes the specified bucket. Only buckets that contain no version of any file can be deleted.
+      tags:
+        - Buckets
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountId
+                - bucketId
+              properties:
+                accountId:
+                  type: string
+                  description: Your account ID.
+                  example: "ACCOUNT_ID"
+                bucketId:
+                  type: string
+                  description: The ID of the bucket to delete.
+                  example: "4a48fe8875c6214145260818"
+      responses:
+        "200":
+          description: Bucket deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bucket'
+        "400":
+          description: |
+            Bad request. Possible codes: `bad_bucket_id`, `bad_request`, `cannot_delete_non_empty_bucket`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v4/b2_list_buckets:
+    post:
+      operationId: b2_list_buckets
+      summary: List buckets
+      description: |
+        Lists buckets alphabetically by name. When using an authorization token restricted to a bucket, you must include the `bucketId` or `bucketName` of that bucket in the request.
+      tags:
+        - Buckets
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountId
+              properties:
+                accountId:
+                  type: string
+                  description: Your account ID.
+                  example: "ACCOUNT_ID"
+                bucketId:
+                  type: string
+                  description: When specified, the result will contain just this bucket.
+                bucketName:
+                  type: string
+                  description: When specified, the result will contain just this bucket.
+                bucketTypes:
+                  type: array
+                  description: Filter for bucket types. Use `["all"]` to return all types.
+                  items:
+                    type: string
+                    enum:
+                      - allPublic
+                      - allPrivate
+                      - restricted
+                      - snapshot
+                      - shared
+                      - all
+      responses:
+        "200":
+          description: Buckets listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  buckets:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Bucket'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  /b2api/v4/b2_update_bucket:
+    post:
+      operationId: b2_update_bucket
+      summary: Update a bucket
+      description: |
+        Modifies bucket properties including bucketType, bucket info, lifecycle rules, CORS rules, default server-side encryption, or default Object Lock retention settings.
+      tags:
+        - Buckets
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bucketId
+              properties:
+                accountId:
+                  type: string
+                  description: The account that the bucket is in.
+                  example: "ACCOUNT_ID"
+                bucketId:
+                  type: string
+                  description: The unique identifier of the bucket.
+                  example: "4a48fe8875c6214145260818"
+                bucketType:
+                  type: string
+                  enum:
+                    - allPublic
+                    - allPrivate
+                bucketInfo:
+                  type: object
+                  description: User-defined information stored with the bucket. Replaces existing info.
+                  additionalProperties:
+                    type: string
+                corsRules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/CorsRule'
+                defaultRetention:
+                  $ref: '#/components/schemas/DefaultRetention'
+                defaultServerSideEncryption:
+                  $ref: '#/components/schemas/ServerSideEncryptionSetting'
+                fileLockEnabled:
+                  type: boolean
+                  description: Once enabled, cannot be disabled. Requires `writeBucketRetentions` capability.
+                lifecycleRules:
+                  type: array
+                  items:
+                    $ref: '#/components/schemas/LifecycleRule'
+                replicationConfiguration:
+                  $ref: '#/components/schemas/ReplicationConfiguration'
+                ifRevisionIs:
+                  type: integer
+                  description: If set, the update only happens if the revision number matches. Used to avoid conflicting simultaneous updates.
+      responses:
+        "200":
+          description: Bucket updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Bucket'
+        "400":
+          description: |
+            Bad request. Possible codes: `bad_bucket_id`, `bad_request`, `file_lock_conflict`, `restricted_bucket_conflict`, `source_replication_conflict`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+        "409":
+          description: The `ifRevisionIs` test failed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ──────────────────────────────────────────────
+  # Files
+  # ──────────────────────────────────────────────
+  /b2api/v4/b2_copy_file:
+    post:
+      operationId: b2_copy_file
+      summary: Copy a file
+      description: |
+        Copies an entire file (or a byte range) to a new file. The result must be less than 5 GB; for larger files use `b2_copy_part`. Source and destination buckets must belong to the same account.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sourceFileId
+                - fileName
+              properties:
+                sourceFileId:
+                  type: string
+                  description: The ID of the source file being copied.
+                destinationBucketId:
+                  type: string
+                  description: The ID of the destination bucket. Defaults to the source file's bucket.
+                fileName:
+                  type: string
+                  description: The name of the new file being created.
+                range:
+                  type: string
+                  description: The range of bytes to copy (e.g., `bytes=0-4999999`).
+                metadataDirective:
+                  type: string
+                  description: Strategy for populating metadata.
+                  enum:
+                    - COPY
+                    - REPLACE
+                contentType:
+                  type: string
+                  description: Required if `metadataDirective` is `REPLACE`. The MIME type for the new file.
+                fileInfo:
+                  type: object
+                  description: Required if `metadataDirective` is `REPLACE`. Custom metadata name/value pairs.
+                  additionalProperties:
+                    type: string
+                fileRetention:
+                  $ref: '#/components/schemas/FileRetentionRequest'
+                legalHold:
+                  type: string
+                  description: Object Lock legal hold status.
+                  enum:
+                    - "on"
+                    - "off"
+                sourceServerSideEncryption:
+                  $ref: '#/components/schemas/ServerSideEncryptionCustomer'
+                destinationServerSideEncryption:
+                  $ref: '#/components/schemas/ServerSideEncryptionCustomer'
+      responses:
+        "200":
+          description: File copied successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        "400":
+          description: |
+            Bad request. Possible codes: `bad_bucket_id`, `bad_request`, `source_too_large`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "408":
+          $ref: '#/components/responses/RequestTimeout'
+        "416":
+          description: Range not satisfiable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v4/b2_delete_file_version:
+    post:
+      operationId: b2_delete_file_version
+      summary: Delete a file version
+      description: |
+        Deletes one version of a file. If the deleted version is the latest, the most recent older version becomes current. When used on an unfinished large file, has the same effect as `b2_cancel_large_file`.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileName
+                - fileId
+              properties:
+                fileName:
+                  type: string
+                  description: The name of the file.
+                  example: "my-file.txt"
+                fileId:
+                  type: string
+                  description: The ID of the file version to delete.
+                bypassGovernance:
+                  type: boolean
+                  description: Must be `true` if deleting a file version protected by Object Lock governance mode retention. Requires `bypassGovernance` capability.
+      responses:
+        "200":
+          description: File version deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                    description: The unique ID of the file version that was deleted.
+                  fileName:
+                    type: string
+                    description: The name of the file.
+        "400":
+          description: |
+            Bad request. Possible codes: `bad_bucket_id`, `bad_request`, `file_not_present`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v4/b2_download_file_by_id:
+    get:
+      operationId: b2_download_file_by_id
+      summary: Download file by ID
+      description: |
+        Downloads one file from B2 by file ID. The response headers include the file's metadata.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: fileId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The unique ID of the file to download.
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+          description: A standard byte-range request (e.g., `bytes=0-99`).
+        - name: b2ContentDisposition
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Overrides the `Content-Disposition` header in the response.
+        - name: b2ContentLanguage
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Overrides the `Content-Language` header in the response.
+        - name: b2ContentEncoding
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Overrides the `Content-Encoding` header in the response.
+        - name: b2ContentType
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Overrides the `Content-Type` header in the response.
+        - name: b2CacheControl
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Overrides the `Cache-Control` header in the response.
+        - name: b2Expires
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Overrides the `Expires` header in the response.
+        - name: X-Bz-Server-Side-Encryption-Customer-Algorithm
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Required for SSE-C encrypted files. Only `AES256` is supported.
+        - name: X-Bz-Server-Side-Encryption-Customer-Key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Required for SSE-C encrypted files. Base64-encoded encryption key.
+        - name: X-Bz-Server-Side-Encryption-Customer-Key-Md5
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Required for SSE-C encrypted files. Base64-encoded MD5 of the encryption key.
+      responses:
+        "200":
+          description: File downloaded successfully. The response body is the file content.
+          headers:
+            X-Bz-File-Name:
+              schema:
+                type: string
+              description: Percent-encoded UTF-8 file name.
+            X-Bz-File-Id:
+              schema:
+                type: string
+              description: The unique identifier for this file version.
+            x-bz-content-sha1:
+              schema:
+                type: string
+              description: The SHA1 of the file content.
+            X-Bz-Info-src_last_modified_millis:
+              schema:
+                type: string
+              description: The source file's last modified timestamp.
+            X-Bz-Server-Side-Encryption:
+              schema:
+                type: string
+              description: SSE algorithm if SSE-B2 encrypted.
+            Content-Type:
+              schema:
+                type: string
+              description: The MIME type of the file.
+            Content-Length:
+              schema:
+                type: integer
+              description: The number of bytes in the file.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "416":
+          description: Range not satisfiable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /file/{bucketName}/{fileName}:
+    get:
+      operationId: b2_download_file_by_name
+      summary: Download file by name
+      description: |
+        Downloads one file by providing the name of the bucket and the name of the file. The base URL for this call is the download URL returned by `b2_authorize_account`.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - name: bucketName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The name of the bucket containing the file.
+        - name: fileName
+          in: path
+          required: true
+          schema:
+            type: string
+          description: The name of the file to download. Percent-encoded UTF-8.
+        - name: Authorization
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Authorization token. Required for private buckets.
+        - name: Range
+          in: header
+          required: false
+          schema:
+            type: string
+          description: A standard byte-range request.
+        - name: b2ContentDisposition
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Overrides the `Content-Disposition` header in the response.
+        - name: b2ContentLanguage
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: b2ContentEncoding
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: b2ContentType
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: b2CacheControl
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: b2Expires
+          in: query
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Server-Side-Encryption-Customer-Algorithm
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Server-Side-Encryption-Customer-Key
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Server-Side-Encryption-Customer-Key-Md5
+          in: header
+          required: false
+          schema:
+            type: string
+      responses:
+        "200":
+          description: File downloaded successfully.
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "416":
+          description: Range not satisfiable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v4/b2_get_file_info:
+    get:
+      operationId: b2_get_file_info
+      summary: Get file info
+      description: |
+        Gets information about one file stored in B2.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: fileId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ID of the file to get info about.
+      responses:
+        "200":
+          description: File info retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /b2api/v4/b2_hide_file:
+    post:
+      operationId: b2_hide_file
+      summary: Hide a file
+      description: |
+        Hides a file so that downloading by name will not find the file, but previous versions are still stored. See File Versions for details.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bucketId
+                - fileName
+              properties:
+                bucketId:
+                  type: string
+                  description: The bucket containing the file to hide.
+                fileName:
+                  type: string
+                  description: The name of the file to hide.
+      responses:
+        "200":
+          description: File hidden successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "404":
+          $ref: '#/components/responses/NotFound'
+
+  /b2api/v4/b2_list_file_names:
+    get:
+      operationId: b2_list_file_names
+      summary: List file names
+      description: |
+        Lists the names of all non-hidden files in a bucket, starting at a given name. Returns at most 10,000 file names per transaction. Supports prefix and delimiter for folder-like listing.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: bucketId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The bucket to look for file names in.
+        - name: startFileName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The first file name to return.
+        - name: maxFileCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10000
+            default: 100
+          description: Maximum number of files to return (default 100, max 10000).
+        - name: prefix
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Files returned will be limited to those with the given prefix.
+        - name: delimiter
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Used to break file names into folders.
+      responses:
+        "200":
+          description: File names listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/File'
+                  nextFileName:
+                    type: string
+                    nullable: true
+                    description: What to pass as `startFileName` for the next page, or null if no more files.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v4/b2_list_file_versions:
+    get:
+      operationId: b2_list_file_versions
+      summary: List file versions
+      description: |
+        Lists all versions of all files in one bucket, in alphabetical order by file name, and by reverse date/time for versions of the same name. Returns at most 10,000 file names per transaction.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: bucketId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The bucket to look for file versions in.
+        - name: startFileName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The first file name to return.
+        - name: startFileId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The first file ID to return. `startFileName` must also be provided.
+        - name: maxFileCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10000
+            default: 100
+          description: Maximum number of files to return.
+        - name: prefix
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Files returned will be limited to those with the given prefix.
+        - name: delimiter
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Used to break file names into folders.
+      responses:
+        "200":
+          description: File versions listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/File'
+                  nextFileName:
+                    type: string
+                    nullable: true
+                    description: What to pass as `startFileName` for the next page, or null.
+                  nextFileId:
+                    type: string
+                    nullable: true
+                    description: What to pass as `startFileId` for the next page, or null.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v4/b2_get_download_authorization:
+    post:
+      operationId: b2_get_download_authorization
+      summary: Get download authorization
+      description: |
+        Generates an authorization token that can be used to download files from a private bucket. The token is valid for the specified duration and restricts access by file name prefix.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bucketId
+                - fileNamePrefix
+                - validDurationInSeconds
+              properties:
+                bucketId:
+                  type: string
+                  description: The ID of the bucket to grant download access.
+                fileNamePrefix:
+                  type: string
+                  description: File name prefix that restricts which files can be downloaded.
+                validDurationInSeconds:
+                  type: integer
+                  description: The number of seconds the authorization token is valid.
+                  minimum: 1
+                  maximum: 604800
+                b2ContentDisposition:
+                  type: string
+                  description: Overrides the Content-Disposition header for downloads.
+                b2ContentLanguage:
+                  type: string
+                b2ContentEncoding:
+                  type: string
+                b2ContentType:
+                  type: string
+                b2CacheControl:
+                  type: string
+                b2Expires:
+                  type: string
+      responses:
+        "200":
+          description: Download authorization created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bucketId:
+                    type: string
+                    description: The ID of the bucket.
+                  fileNamePrefix:
+                    type: string
+                    description: The file name prefix.
+                  authorizationToken:
+                    type: string
+                    description: The authorization token for downloads.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+        "503":
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /b2api/v4/b2_upload_file:
+    post:
+      operationId: b2_upload_file
+      summary: Upload a file
+      description: |
+        Uploads one file to B2 and returns its unique file ID. The upload URL and authorization token are obtained from `b2_get_upload_url`. The request body is the raw file bytes.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Upload authorization token obtained from `b2_get_upload_url`.
+        - name: X-Bz-File-Name
+          in: header
+          required: true
+          schema:
+            type: string
+          description: The name of the file, in percent-encoded UTF-8.
+        - name: Content-Type
+          in: header
+          required: true
+          schema:
+            type: string
+          description: MIME type. Use `b2/x-auto` for automatic detection.
+        - name: Content-Length
+          in: header
+          required: true
+          schema:
+            type: integer
+          description: Number of bytes in the file.
+        - name: X-Bz-Content-Sha1
+          in: header
+          required: true
+          schema:
+            type: string
+          description: SHA1 checksum of the file content.
+        - name: X-Bz-Info-src_last_modified_millis
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Last modified time of original source (ms since epoch).
+        - name: X-Bz-Info-b2-content-disposition
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Info-b2-content-language
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Info-b2-expires
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Info-b2-cache-control
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Info-b2-content-encoding
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Custom-Upload-Timestamp
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Custom upload timestamp (ms since epoch). Must be enabled by support.
+        - name: X-Bz-File-Legal-Hold
+          in: header
+          required: false
+          schema:
+            type: string
+            enum:
+              - "on"
+              - "off"
+          description: Object Lock legal hold status.
+        - name: X-Bz-File-Retention-Mode
+          in: header
+          required: false
+          schema:
+            type: string
+            enum:
+              - governance
+              - compliance
+          description: Object Lock retention mode.
+        - name: X-Bz-File-Retention-Retain-Until-Timestamp
+          in: header
+          required: false
+          schema:
+            type: integer
+          description: Retention expiry (ms since epoch).
+        - name: X-Bz-Server-Side-Encryption
+          in: header
+          required: false
+          schema:
+            type: string
+            enum:
+              - AES256
+          description: SSE-B2 encryption algorithm.
+        - name: X-Bz-Server-Side-Encryption-Customer-Algorithm
+          in: header
+          required: false
+          schema:
+            type: string
+          description: SSE-C algorithm (AES256).
+        - name: X-Bz-Server-Side-Encryption-Customer-Key
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Base64-encoded SSE-C encryption key.
+        - name: X-Bz-Server-Side-Encryption-Customer-Key-Md5
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Base64-encoded MD5 of the SSE-C encryption key.
+      requestBody:
+        required: true
+        description: Raw file bytes.
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: File uploaded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        "400":
+          description: |
+            Bad request. Possible codes: `auth_token_limit`, `bad_bucket_id`, `bad_request`, `custom_timestamp_invalid`, `custom_timestamp_not_allowed`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          description: Usage cap exceeded.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "405":
+          description: Only POST is supported.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "408":
+          $ref: '#/components/responses/RequestTimeout'
+        "411":
+          description: Content-Length header is missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "415":
+          description: Content-Type is not valid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "503":
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /b2api/v4/b2_get_upload_url:
+    get:
+      operationId: b2_get_upload_url
+      summary: Get upload URL
+      description: |
+        Gets a URL and authorization token to use for uploading files via `b2_upload_file`. The URL and token are valid for 24 hours or until the endpoint rejects an upload.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: bucketId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ID of the bucket to upload to.
+      responses:
+        "200":
+          description: Upload URL obtained successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  bucketId:
+                    type: string
+                    description: The unique ID of the bucket.
+                  uploadUrl:
+                    type: string
+                    description: The URL to use for uploading files.
+                  authorizationToken:
+                    type: string
+                    description: The authorization token to use with the upload URL.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+        "503":
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /b2api/v4/b2_update_file_legal_hold:
+    post:
+      operationId: b2_update_file_legal_hold
+      summary: Update file legal hold
+      description: |
+        Modifies the Object Lock legal hold status for an existing file.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileName
+                - fileId
+                - legalHold
+              properties:
+                fileName:
+                  type: string
+                  description: The name of the file.
+                fileId:
+                  type: string
+                  description: The ID of the file.
+                legalHold:
+                  type: string
+                  description: Legal hold status.
+                  enum:
+                    - "on"
+                    - "off"
+      responses:
+        "200":
+          description: Legal hold updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                  fileName:
+                    type: string
+                  legalHold:
+                    type: string
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "405":
+          description: Not allowed because the file is a hide marker.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v4/b2_update_file_retention:
+    post:
+      operationId: b2_update_file_retention
+      summary: Update file retention
+      description: |
+        Updates the Object Lock retention settings for an existing file.
+      tags:
+        - Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileName
+                - fileId
+              properties:
+                fileName:
+                  type: string
+                  description: The name of the file.
+                fileId:
+                  type: string
+                  description: The ID of the file.
+                fileRetention:
+                  $ref: '#/components/schemas/FileRetentionRequest'
+                bypassGovernance:
+                  type: boolean
+                  description: Must be `true` when shortening governance mode retention.
+      responses:
+        "200":
+          description: File retention updated successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                  fileName:
+                    type: string
+                  fileRetention:
+                    $ref: '#/components/schemas/FileRetentionResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "405":
+          description: Not allowed because the file is a hide marker.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ──────────────────────────────────────────────
+  # Large Files
+  # ──────────────────────────────────────────────
+  /b2api/v4/b2_start_large_file:
+    post:
+      operationId: b2_start_large_file
+      summary: Start a large file upload
+      description: |
+        Prepares for uploading a large file in parts. Returns a file ID that is used with `b2_get_upload_part_url` and `b2_upload_part`.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bucketId
+                - fileName
+                - contentType
+              properties:
+                bucketId:
+                  type: string
+                  description: The ID of the bucket the file will go in.
+                fileName:
+                  type: string
+                  description: The name of the file.
+                contentType:
+                  type: string
+                  description: The MIME type. Use `b2/x-auto` for auto-detection.
+                customUploadTimestamp:
+                  type: string
+                  description: Custom upload timestamp (ms since epoch). Must be enabled by support.
+                fileInfo:
+                  type: object
+                  description: Custom metadata name/value pairs.
+                  additionalProperties:
+                    type: string
+                fileRetention:
+                  $ref: '#/components/schemas/FileRetentionRequest'
+                legalHold:
+                  type: string
+                  enum:
+                    - "on"
+                    - "off"
+                serverSideEncryption:
+                  $ref: '#/components/schemas/ServerSideEncryptionCustomer'
+      responses:
+        "200":
+          description: Large file started successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        "400":
+          description: |
+            Bad request. Possible codes: `bad_bucket_id`, `bad_request`, `custom_timestamp_invalid`, `custom_timestamp_not_allowed`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "415":
+          description: Unsupported Content-Type.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v4/b2_get_upload_part_url:
+    get:
+      operationId: b2_get_upload_part_url
+      summary: Get upload part URL
+      description: |
+        Gets a URL and authorization token to use for uploading parts of a large file via `b2_upload_part`.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: fileId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ID returned by `b2_start_large_file`.
+      responses:
+        "200":
+          description: Upload part URL obtained successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                    description: The unique ID of the file being uploaded.
+                  uploadUrl:
+                    type: string
+                    description: The URL to use for uploading parts.
+                  authorizationToken:
+                    type: string
+                    description: The authorization token to use with the upload URL.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+        "503":
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /b2api/v4/b2_upload_part:
+    post:
+      operationId: b2_upload_part
+      summary: Upload a part
+      description: |
+        Uploads one part of a large file. The upload URL and authorization token are obtained from `b2_get_upload_part_url`. Once all parts are uploaded, call `b2_finish_large_file`.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - name: Authorization
+          in: header
+          required: true
+          schema:
+            type: string
+          description: Upload authorization token from `b2_get_upload_part_url`.
+        - name: X-Bz-Part-Number
+          in: header
+          required: true
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10000
+          description: Part number (1 to 10000).
+        - name: Content-Length
+          in: header
+          required: true
+          schema:
+            type: integer
+          description: Number of bytes in the part.
+        - name: X-Bz-Content-Sha1
+          in: header
+          required: true
+          schema:
+            type: string
+          description: SHA1 checksum of the part content.
+        - name: X-Bz-Server-Side-Encryption-Customer-Algorithm
+          in: header
+          required: false
+          schema:
+            type: string
+          description: Required if large file started with SSE-C. Only `AES256`.
+        - name: X-Bz-Server-Side-Encryption-Customer-Key
+          in: header
+          required: false
+          schema:
+            type: string
+        - name: X-Bz-Server-Side-Encryption-Customer-Key-Md5
+          in: header
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        description: Raw part bytes.
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        "200":
+          description: Part uploaded successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Part'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "405":
+          description: Only POST is supported.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "408":
+          $ref: '#/components/responses/RequestTimeout'
+        "411":
+          description: Content-Length header is missing.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "503":
+          $ref: '#/components/responses/ServiceUnavailable'
+
+  /b2api/v4/b2_copy_part:
+    post:
+      operationId: b2_copy_part
+      summary: Copy a part
+      description: |
+        Copies from an existing B2 file, storing it as a part of a large file which has already been started with `b2_start_large_file`.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - sourceFileId
+                - largeFileId
+                - partNumber
+              properties:
+                sourceFileId:
+                  type: string
+                  description: The ID of the source file being copied.
+                largeFileId:
+                  type: string
+                  description: The ID of the large file the part will belong to.
+                partNumber:
+                  type: integer
+                  description: A number from 1 to 10000.
+                  minimum: 1
+                  maximum: 10000
+                range:
+                  type: string
+                  description: The range of bytes to copy (e.g., `bytes=0-4999999`).
+                sourceServerSideEncryption:
+                  $ref: '#/components/schemas/ServerSideEncryptionCustomer'
+                destinationServerSideEncryption:
+                  $ref: '#/components/schemas/ServerSideEncryptionCustomer'
+      responses:
+        "200":
+          description: Part copied successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Part'
+        "400":
+          description: |
+            Bad request. Possible codes: `bad_bucket_id`, `bad_request`, `source_too_large`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+        "404":
+          $ref: '#/components/responses/NotFound'
+        "408":
+          $ref: '#/components/responses/RequestTimeout'
+        "416":
+          description: Range not satisfiable.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v4/b2_finish_large_file:
+    post:
+      operationId: b2_finish_large_file
+      summary: Finish a large file upload
+      description: |
+        Converts the parts that have been uploaded into a single B2 file. All parts except the last one must be at least `absoluteMinimumPartSize`.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+                - partSha1Array
+              properties:
+                fileId:
+                  type: string
+                  description: The ID returned by `b2_start_large_file`.
+                partSha1Array:
+                  type: array
+                  description: An array of SHA1 checksums of the parts, in order.
+                  items:
+                    type: string
+      responses:
+        "200":
+          description: Large file finished successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/File'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v4/b2_cancel_large_file:
+    post:
+      operationId: b2_cancel_large_file
+      summary: Cancel a large file upload
+      description: |
+        Cancels the upload of a large file and deletes all parts that have been uploaded.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - fileId
+              properties:
+                fileId:
+                  type: string
+                  description: The ID returned by `b2_start_large_file`.
+      responses:
+        "200":
+          description: Large file upload canceled successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  fileId:
+                    type: string
+                    description: The file ID.
+                  accountId:
+                    type: string
+                    description: The account ID.
+                  bucketId:
+                    type: string
+                    description: The bucket ID.
+                  fileName:
+                    type: string
+                    description: The file name.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v4/b2_list_parts:
+    get:
+      operationId: b2_list_parts
+      summary: List parts of a large file
+      description: |
+        Lists the parts that have been uploaded for a large file that has not been finished or canceled.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: fileId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ID returned by `b2_start_large_file`.
+        - name: startPartNumber
+          in: query
+          required: false
+          schema:
+            type: integer
+          description: The first part number to return.
+        - name: maxPartCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 1000
+            default: 100
+          description: Maximum number of parts to return.
+      responses:
+        "200":
+          description: Parts listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  parts:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Part'
+                  nextPartNumber:
+                    type: integer
+                    nullable: true
+                    description: What to pass as `startPartNumber` for the next page, or null.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  /b2api/v4/b2_list_unfinished_large_files:
+    get:
+      operationId: b2_list_unfinished_large_files
+      summary: List unfinished large files
+      description: |
+        Lists information about large file uploads that have been started but not finished or canceled. Returns at most 100 entries per call.
+      tags:
+        - Large Files
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: bucketId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The bucket to list unfinished large files in.
+        - name: namePrefix
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Only files whose names match the prefix will be returned.
+        - name: startFileId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The first upload to return.
+        - name: maxFileCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 100
+            default: 100
+          description: Maximum number of files to return.
+      responses:
+        "200":
+          description: Unfinished large files listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  files:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/File'
+                  nextFileId:
+                    type: string
+                    nullable: true
+                    description: What to pass as `startFileId` for the next page, or null.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  # ──────────────────────────────────────────────
+  # Keys
+  # ──────────────────────────────────────────────
+  /b2api/v4/b2_create_key:
+    post:
+      operationId: b2_create_key
+      summary: Create an application key
+      description: |
+        Creates a new application key. There is a limit of 100 million key creations per account. In v4, supports Multi-Bucket Application Keys via the `bucketIds` field.
+      tags:
+        - Keys
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountId
+                - capabilities
+                - keyName
+              properties:
+                accountId:
+                  type: string
+                  description: Your account ID.
+                capabilities:
+                  type: array
+                  description: A list of capability strings for the new key.
+                  items:
+                    $ref: '#/components/schemas/Capability'
+                keyName:
+                  type: string
+                  description: The name for this key. Max 100 characters.
+                  maxLength: 100
+                  pattern: "[A-Za-z0-9\\-]+"
+                validDurationInSeconds:
+                  type: integer
+                  description: When provided, the key expires after this many seconds.
+                  minimum: 0
+                  maximum: 86400000
+                bucketIds:
+                  type: array
+                  description: Restricts the key to only access the specified buckets.
+                  items:
+                    type: string
+                namePrefix:
+                  type: string
+                  description: Restricts access to files with names starting with this prefix.
+      responses:
+        "200":
+          description: Application key created successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationKey'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  /b2api/v4/b2_delete_key:
+    post:
+      operationId: b2_delete_key
+      summary: Delete an application key
+      description: |
+        Deletes the specified application key.
+      tags:
+        - Keys
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - applicationKeyId
+              properties:
+                applicationKeyId:
+                  type: string
+                  description: The key to delete.
+      responses:
+        "200":
+          description: Application key deleted successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApplicationKeyInfo'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v4/b2_list_keys:
+    get:
+      operationId: b2_list_keys
+      summary: List application keys
+      description: |
+        Lists application keys associated with an account. In v4, only Multi-Bucket Application Keys are returned.
+      tags:
+        - Keys
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Your account ID.
+        - name: maxKeyCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            maximum: 10000
+            default: 100
+          description: Maximum number of keys to return.
+        - name: startApplicationKeyId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: The first key to return. Used for pagination.
+      responses:
+        "200":
+          description: Application keys listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  keys:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/ApplicationKeyInfo'
+                  nextApplicationKeyId:
+                    type: string
+                    nullable: true
+                    description: Pass as `startApplicationKeyId` in the next query for pagination.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  # ──────────────────────────────────────────────
+  # Notifications
+  # ──────────────────────────────────────────────
+  /b2api/v4/b2_get_bucket_notification_rules:
+    get:
+      operationId: b2_get_bucket_notification_rules
+      summary: Get bucket notification rules
+      description: |
+        Gets the event notification rules for a bucket.
+      tags:
+        - Notifications
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: bucketId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The ID of the bucket.
+      responses:
+        "200":
+          description: Notification rules retrieved successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationRulesResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  /b2api/v4/b2_set_bucket_notification_rules:
+    post:
+      operationId: b2_set_bucket_notification_rules
+      summary: Set bucket notification rules
+      description: |
+        Replaces the event notification rules of an existing bucket.
+      tags:
+        - Notifications
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - bucketId
+                - eventNotificationRules
+              properties:
+                bucketId:
+                  type: string
+                  description: The ID of the bucket.
+                eventNotificationRules:
+                  type: array
+                  description: Rules that replace the existing rules.
+                  items:
+                    $ref: '#/components/schemas/EventNotificationRule'
+      responses:
+        "200":
+          description: Notification rules updated successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NotificationRulesResponse'
+        "400":
+          description: |
+            Bad request. Many specific error codes are possible including `prefix_overlap`, `event_type_invalid`, `too_many_event_notification_rules`, etc.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/TransactionCapExceeded'
+
+  # ──────────────────────────────────────────────
+  # Partner API
+  # ──────────────────────────────────────────────
+  /b2api/v3/b2_authorize_account:
+    get:
+      operationId: b2_authorize_account_partner
+      summary: Authorize account (Partner API)
+      description: |
+        Returns an authorization token for the Partner API. Uses HTTP Basic authentication with your master application key. The v3 endpoint returns both B2 Native API and Partner API information.
+      tags:
+        - Partner API
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationBasic'
+      responses:
+        "200":
+          description: Authorization successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizeAccountResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: |
+            Unauthorized. The `applicationKeyId` and/or `applicationKey` are wrong, or the key is only valid for a later API version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v3/b2_create_group_member:
+    post:
+      operationId: b2_create_group_member
+      summary: Create a group member
+      description: |
+        Creates a new Backblaze account and adds it to a Group as a Group member. The email must not already exist as a Backblaze account. Limit of 5,000 members per Group.
+      tags:
+        - Partner API
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - adminAccountId
+                - groupId
+                - memberEmail
+              properties:
+                adminAccountId:
+                  type: string
+                  description: The `accountId` of the Group admin.
+                groupId:
+                  type: string
+                  description: The Group ID.
+                memberEmail:
+                  type: string
+                  description: New Group member's email. Cannot already be an existing Backblaze account.
+                  format: email
+                region:
+                  type: string
+                  description: Region for the new account's data.
+                  enum:
+                    - us-east
+                    - us-west
+                    - eu-central
+      responses:
+        "200":
+          description: Group member created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applicationKeyId:
+                    type: string
+                    description: B2 application key ID for the new member.
+                  applicationKey:
+                    type: string
+                    description: B2 application key for the new member.
+                  groupMember:
+                    $ref: '#/components/schemas/GroupMember'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: |
+            Unauthorized. Possible codes: `too_many_members`, `invalid_group_id`, `invalid_email`, `invalid_region`, `unauthorized`, `bad_auth_token`, `expired_auth_token`, `method_failure`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v3/b2_eject_group_member:
+    post:
+      operationId: b2_eject_group_member
+      summary: Eject a group member
+      description: |
+        Ejects a Group member from a Group. Does not delete the Backblaze account, but removes it from the Group. Ejected members must reset their password on next login.
+      tags:
+        - Partner API
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - adminAccountId
+                - groupId
+                - memberAccountId
+              properties:
+                adminAccountId:
+                  type: string
+                  description: The `accountId` of the Group admin.
+                groupId:
+                  type: string
+                  description: The Group ID.
+                memberAccountId:
+                  type: string
+                  description: The `accountId` of the member being ejected.
+                email:
+                  type: string
+                  description: If provided and different from current email, changes the member's email after ejection.
+                  format: email
+      responses:
+        "200":
+          description: Group member ejected successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupMember'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: |
+            Unauthorized. Possible codes: `invalid_member_account_id`, `invalid_group_id`, `invalid_email`, `unauthorized`, `bad_auth_token`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v3/b2_list_groups:
+    get:
+      operationId: b2_list_groups
+      summary: List groups
+      description: |
+        Lists active Groups for an authorized Group admin. A single admin can administer a maximum of 500 groups.
+      tags:
+        - Partner API
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: adminAccountId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The `accountId` of the Group admin.
+        - name: groupName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by Group name.
+        - name: startGroupId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Starting `groupId` for pagination.
+        - name: maxGroupCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Number of Groups to return.
+      responses:
+        "200":
+          description: Groups listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountId:
+                    type: string
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Group'
+                  nextGroupId:
+                    type: string
+                    nullable: true
+                    description: Pass as `startGroupId` for the next page, or null.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v3/b2_list_group_members:
+    get:
+      operationId: b2_list_group_members
+      summary: List group members
+      description: |
+        Lists active Group members for a specific Group. Limit of 5,000 members per Group.
+      tags:
+        - Partner API
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: adminAccountId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The `accountId` of the Group admin.
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The Group ID.
+        - name: startEmail
+          in: query
+          required: false
+          schema:
+            type: string
+          description: First email to return for pagination.
+        - name: maxMemberCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+          description: Maximum number of members to return.
+      responses:
+        "200":
+          description: Group members listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groupId:
+                    type: string
+                  groupName:
+                    type: string
+                  groupMembers:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/GroupMember'
+                        - type: object
+                          properties:
+                            b2Stats:
+                              $ref: '#/components/schemas/B2Stats'
+                  nextEmail:
+                    type: string
+                    nullable: true
+                    description: Pass as `startEmail` for the next page, or null.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+# ════════════════════════════════════════════════
+# Components
+# ════════════════════════════════════════════════
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: |
+        HTTP Basic authentication using `applicationKeyId:applicationKey` encoded in Base64. The account ID can be used in place of the master application key ID.
+    authorizationToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        An authorization token obtained from `b2_authorize_account`. Valid for at most 24 hours.
+
+  parameters:
+    AuthorizationToken:
+      name: Authorization
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Authorization token from `b2_authorize_account`.
+    AuthorizationBasic:
+      name: Authorization
+      in: header
+      required: true
+      schema:
+        type: string
+      description: HTTP Basic auth value (`Basic base64(applicationKeyId:applicationKey)`).
+
+  responses:
+    BadRequest:
+      description: Bad request. The request had the wrong fields or illegal values.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: |
+        Unauthorized. Possible codes: `bad_auth_token`, `expired_auth_token`, `unauthorized`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: |
+        Forbidden. Possible codes: `access_denied`, `transaction_cap_exceeded`, `cap_exceeded`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    TransactionCapExceeded:
+      description: Transaction cap exceeded.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NotFound:
+      description: File is not in B2 Cloud Storage.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    RequestTimeout:
+      description: The service timed out reading the request.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    ServiceUnavailable:
+      description: The service is temporarily unavailable. Retry with exponential backoff.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      description: Standard error response.
+      properties:
+        status:
+          type: integer
+          description: The numeric HTTP status code.
+          example: 400
+        code:
+          type: string
+          description: A single-identifier code that identifies the error.
+          example: "bad_request"
+        message:
+          type: string
+          description: A human-readable message describing what went wrong.
+          example: "The request had the wrong fields or illegal values."
+      required:
+        - status
+        - code
+        - message
+
+    Capability:
+      type: string
+      enum:
+        - listKeys
+        - writeKeys
+        - deleteKeys
+        - listAllBucketNames
+        - listBuckets
+        - readBuckets
+        - writeBuckets
+        - deleteBuckets
+        - readBucketRetentions
+        - writeBucketRetentions
+        - readBucketEncryption
+        - writeBucketEncryption
+        - readBucketNotifications
+        - writeBucketNotifications
+        - readBucketReplications
+        - writeBucketReplications
+        - readBucketLogging
+        - writeBucketLogging
+        - listFiles
+        - readFiles
+        - shareFiles
+        - writeFiles
+        - deleteFiles
+        - readFileLegalHolds
+        - writeFileLegalHolds
+        - readFileRetentions
+        - writeFileRetentions
+        - bypassGovernance
+
+    AuthorizeAccountResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The identifier for the account.
+          example: "ACCOUNT_ID"
+        authorizationToken:
+          type: string
+          description: Authorization token for subsequent calls. Valid for at most 24 hours.
+          example: "AUTHORIZATION_TOKEN"
+        applicationKeyExpirationTimestamp:
+          type: integer
+          nullable: true
+          description: Expiration timestamp for the application key.
+        apiInfo:
+          type: object
+          properties:
+            storageApi:
+              type: object
+              description: Information for the B2 Native API.
+              properties:
+                absoluteMinimumPartSize:
+                  type: integer
+                  description: The smallest possible size of a part of a large file (except the last one).
+                  example: 5000000
+                apiUrl:
+                  type: string
+                  description: Base URL for all API calls except uploading and downloading files.
+                  example: "https://api001.backblazeb2.com"
+                allowed:
+                  type: object
+                  description: Application key restrictions (v4).
+                  properties:
+                    buckets:
+                      type: array
+                      description: Buckets the key is restricted to.
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                            nullable: true
+                    capabilities:
+                      type: array
+                      items:
+                        $ref: '#/components/schemas/Capability'
+                    namePrefix:
+                      type: string
+                      nullable: true
+                      description: File name prefix restriction.
+                downloadUrl:
+                  type: string
+                  description: Base URL for downloading files.
+                  example: "https://f001.backblazeb2.com"
+                recommendedPartSize:
+                  type: integer
+                  description: The recommended file part size.
+                  example: 100000000
+                s3ApiUrl:
+                  type: string
+                  description: Base URL for the S3 Compatible API.
+                  example: "https://s3.us-west-001.backblazeb2.com"
+            groupsApi:
+              type: object
+              description: Information for the Partner API.
+              properties:
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                  example: ["all"]
+                groupsApiUrl:
+                  type: string
+                  description: Base URL for all Partner API calls.
+                  example: "https://api001.backblazeb2.com"
+                infoType:
+                  type: string
+                  example: "groupsApi"
+
+    Bucket:
+      type: object
+      description: A B2 bucket.
+      properties:
+        accountId:
+          type: string
+          description: The account that the bucket is in.
+          example: "ACCOUNT_ID"
+        bucketId:
+          type: string
+          description: The unique identifier of the bucket.
+          example: "4a48fe8875c6214145260818"
+        bucketName:
+          type: string
+          description: The unique name of the bucket.
+          example: "my-bucket"
+        bucketType:
+          type: string
+          description: The type of the bucket.
+          enum:
+            - allPublic
+            - allPrivate
+            - restricted
+            - snapshot
+            - shared
+          example: "allPrivate"
+        bucketInfo:
+          type: object
+          description: User-defined metadata stored with the bucket.
+          additionalProperties:
+            type: string
+        corsRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/CorsRule'
+        fileLockConfiguration:
+          type: object
+          description: Object Lock configuration. Requires `readBucketRetentions` capability.
+          properties:
+            isClientAuthorizedToRead:
+              type: boolean
+            value:
+              type: object
+              properties:
+                defaultRetention:
+                  type: object
+                  properties:
+                    mode:
+                      type: string
+                      nullable: true
+                      enum:
+                        - compliance
+                        - governance
+                        - null
+                    period:
+                      type: object
+                      nullable: true
+                      properties:
+                        duration:
+                          type: integer
+                        unit:
+                          type: string
+                          enum:
+                            - days
+                            - years
+                isFileLockEnabled:
+                  type: boolean
+        defaultServerSideEncryption:
+          type: object
+          description: Default SSE settings. Requires `readBucketEncryption` capability.
+          properties:
+            isClientAuthorizedToRead:
+              type: boolean
+            value:
+              type: object
+              properties:
+                algorithm:
+                  type: string
+                  nullable: true
+                  example: "AES256"
+                mode:
+                  type: string
+                  nullable: true
+                  example: "SSE-B2"
+        lifecycleRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/LifecycleRule'
+        replicationConfiguration:
+          type: object
+          description: Cloud Replication configuration.
+          properties:
+            isClientAuthorizedToRead:
+              type: boolean
+            value:
+              $ref: '#/components/schemas/ReplicationConfiguration'
+        revision:
+          type: integer
+          description: Counter incremented each time the bucket is modified.
+        options:
+          type: array
+          description: When set to `["s3"]`, the bucket can be accessed via the S3 Compatible API.
+          items:
+            type: string
+            enum:
+              - s3
+
+    File:
+      type: object
+      description: A B2 file or file version.
+      properties:
+        accountId:
+          type: string
+          description: The account that owns the file.
+        action:
+          type: string
+          description: How this file was stored.
+          enum:
+            - start
+            - upload
+            - hide
+            - folder
+            - copy
+        bucketId:
+          type: string
+          description: The bucket the file is in.
+        contentLength:
+          type: integer
+          description: Number of bytes stored. Always 0 for `start`, `hide`, and `folder`.
+        contentSha1:
+          type: string
+          nullable: true
+          description: SHA1 of the stored bytes (40-digit hex). `none` for large files, `null` for hide/folder.
+        contentMd5:
+          type: string
+          nullable: true
+          description: MD5 of the stored bytes (32-digit hex). Optional.
+        contentType:
+          type: string
+          nullable: true
+          description: MIME type. `application/x-bz-hide-marker` for hide action. `null` for folder.
+        fileId:
+          type: string
+          nullable: true
+          description: Unique identifier for this file version. `null` for folder action.
+        fileInfo:
+          type: object
+          description: Custom metadata uploaded with the file.
+          additionalProperties:
+            type: string
+        fileName:
+          type: string
+          description: The name of the file.
+        fileRetention:
+          $ref: '#/components/schemas/FileRetentionResponse'
+        legalHold:
+          type: object
+          description: Object Lock legal hold status.
+          properties:
+            isClientAuthorizedToRead:
+              type: boolean
+            value:
+              type: string
+              nullable: true
+              enum:
+                - "on"
+                - "off"
+                - null
+        replicationStatus:
+          type: string
+          description: Replication status. Omitted if not part of a replication rule.
+          enum:
+            - PENDING
+            - COMPLETED
+            - FAILED
+            - REPLICA
+        serverSideEncryption:
+          $ref: '#/components/schemas/ServerSideEncryptionInfo'
+        uploadTimestamp:
+          type: integer
+          description: UTC upload time in milliseconds since epoch. Always 0 for folder action.
+
+    Part:
+      type: object
+      description: A part of a large file upload.
+      properties:
+        fileId:
+          type: string
+          description: The file ID for the large file.
+        partNumber:
+          type: integer
+          description: Which part this is.
+        contentLength:
+          type: integer
+          description: Number of bytes stored in the part.
+        contentSha1:
+          type: string
+          description: SHA1 of the bytes stored.
+        contentMd5:
+          type: string
+          nullable: true
+          description: MD5 of the bytes stored. Optional.
+        serverSideEncryption:
+          $ref: '#/components/schemas/ServerSideEncryptionInfo'
+        uploadTimestamp:
+          type: integer
+          description: UTC upload time in milliseconds since epoch.
+
+    ApplicationKey:
+      type: object
+      description: A newly created application key (includes the secret).
+      properties:
+        keyName:
+          type: string
+          description: The name assigned when the key was created.
+        applicationKeyId:
+          type: string
+          description: The ID of the newly created key.
+        applicationKey:
+          type: string
+          description: The secret part of the key. Only returned at creation time.
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+        accountId:
+          type: string
+        expirationTimestamp:
+          type: integer
+          nullable: true
+          description: Key expiration time in milliseconds since epoch.
+        bucketIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+        namePrefix:
+          type: string
+          nullable: true
+        options:
+          type: array
+          items:
+            type: string
+            enum:
+              - s3
+
+    ApplicationKeyInfo:
+      type: object
+      description: Application key information (without the secret).
+      properties:
+        keyName:
+          type: string
+        applicationKeyId:
+          type: string
+        capabilities:
+          type: array
+          items:
+            $ref: '#/components/schemas/Capability'
+        accountId:
+          type: string
+        expirationTimestamp:
+          type: integer
+          nullable: true
+        bucketIds:
+          type: array
+          nullable: true
+          items:
+            type: string
+        namePrefix:
+          type: string
+          nullable: true
+        options:
+          type: array
+          items:
+            type: string
+            enum:
+              - s3
+
+    CorsRule:
+      type: object
+      description: A CORS rule for a bucket.
+      properties:
+        corsRuleName:
+          type: string
+          description: A name for the rule.
+          example: "downloadFromAnyOrigin"
+        allowedOrigins:
+          type: array
+          items:
+            type: string
+          example: ["https"]
+        allowedHeaders:
+          type: array
+          items:
+            type: string
+          example: ["range"]
+        allowedOperations:
+          type: array
+          items:
+            type: string
+          example: ["b2_download_file_by_id", "b2_download_file_by_name"]
+        exposeHeaders:
+          type: array
+          items:
+            type: string
+          example: ["x-bz-content-sha1"]
+        maxAgeSeconds:
+          type: integer
+          example: 3600
+
+    LifecycleRule:
+      type: object
+      description: A lifecycle rule for a bucket.
+      properties:
+        daysFromHidingToDeleting:
+          type: integer
+          nullable: true
+          description: Days from hiding to automatic deletion.
+        daysFromUploadingToHiding:
+          type: integer
+          nullable: true
+          description: Days from uploading to automatic hiding.
+        fileNamePrefix:
+          type: string
+          description: File name prefix the rule applies to.
+
+    ReplicationConfiguration:
+      type: object
+      description: Cloud Replication configuration.
+      properties:
+        asReplicationSource:
+          type: object
+          properties:
+            replicationRules:
+              type: array
+              items:
+                type: object
+                properties:
+                  destinationBucketId:
+                    type: string
+                  fileNamePrefix:
+                    type: string
+                  includeExistingFiles:
+                    type: boolean
+                  isEnabled:
+                    type: boolean
+                  priority:
+                    type: integer
+                  replicationRuleName:
+                    type: string
+            sourceApplicationKeyId:
+              type: string
+        asReplicationDestination:
+          type: object
+          properties:
+            sourceToDestinationKeyMapping:
+              type: object
+              additionalProperties:
+                type: string
+
+    DefaultRetention:
+      type: object
+      description: Default Object Lock retention settings.
+      properties:
+        mode:
+          type: string
+          enum:
+            - compliance
+            - governance
+        period:
+          type: object
+          properties:
+            duration:
+              type: integer
+            unit:
+              type: string
+              enum:
+                - days
+                - years
+
+    FileRetentionRequest:
+      type: object
+      description: File retention settings for a request.
+      properties:
+        mode:
+          type: string
+          enum:
+            - compliance
+            - governance
+        retainUntilTimestamp:
+          type: integer
+          description: Retention expiry timestamp in milliseconds since epoch.
+
+    FileRetentionResponse:
+      type: object
+      description: File retention information in a response.
+      properties:
+        isClientAuthorizedToRead:
+          type: boolean
+        value:
+          type: object
+          properties:
+            mode:
+              type: string
+              nullable: true
+              enum:
+                - compliance
+                - governance
+                - null
+            retainUntilTimestamp:
+              type: integer
+              nullable: true
+
+    ServerSideEncryptionSetting:
+      type: object
+      description: Server-side encryption settings for a bucket.
+      properties:
+        mode:
+          type: string
+          enum:
+            - SSE-B2
+        algorithm:
+          type: string
+          enum:
+            - AES256
+
+    ServerSideEncryptionCustomer:
+      type: object
+      description: Customer-managed server-side encryption parameters.
+      properties:
+        mode:
+          type: string
+          enum:
+            - SSE-C
+        algorithm:
+          type: string
+          enum:
+            - AES256
+        customerKey:
+          type: string
+          description: Base64-encoded encryption key.
+        customerKeyMd5:
+          type: string
+          description: Base64-encoded MD5 of the encryption key.
+
+    ServerSideEncryptionInfo:
+      type: object
+      description: Server-side encryption information in a response.
+      properties:
+        algorithm:
+          type: string
+          nullable: true
+          example: "AES256"
+        mode:
+          type: string
+          nullable: true
+          enum:
+            - SSE-B2
+            - SSE-C
+            - null
+
+    EventNotificationRule:
+      type: object
+      description: An event notification rule for a bucket.
+      required:
+        - eventTypes
+        - isEnabled
+        - name
+        - objectNamePrefix
+        - targetConfiguration
+      properties:
+        eventTypes:
+          type: array
+          description: The event types that trigger this rule.
+          items:
+            type: string
+          example: ["b2:ObjectCreated:Upload", "b2:ObjectCreated:MultipartUpload"]
+        isEnabled:
+          type: boolean
+          description: Whether the rule is enabled.
+        isSuspended:
+          type: boolean
+          description: Whether the rule is suspended.
+        maxEventsPerBatch:
+          type: integer
+          description: Maximum events per webhook invocation (1-50).
+          minimum: 1
+          maximum: 50
+          default: 1
+        name:
+          type: string
+          description: Rule name. Must be unique among the bucket's notification rules.
+        objectNamePrefix:
+          type: string
+          description: Object name prefix the rule applies to.
+        suspensionReason:
+          type: string
+          description: Brief description of why the rule is suspended.
+        targetConfiguration:
+          type: object
+          required:
+            - targetType
+            - url
+          properties:
+            targetType:
+              type: string
+              description: Target type. Currently only `webhook`.
+              enum:
+                - webhook
+            url:
+              type: string
+              description: Webhook URL. Must be HTTPS and not point to a Backblaze hostname.
+              format: uri
+            hmacSha256SigningSecret:
+              type: string
+              nullable: true
+              description: HMAC signing secret for webhook verification (32-char alphanumeric).
+            customHeaders:
+              type: array
+              description: Additional headers sent on webhook invocation (max 10).
+              maxItems: 10
+              items:
+                type: object
+                properties:
+                  name:
+                    type: string
+                  value:
+                    type: string
+
+    NotificationRulesResponse:
+      type: object
+      properties:
+        bucketId:
+          type: string
+        eventNotificationRules:
+          type: array
+          items:
+            $ref: '#/components/schemas/EventNotificationRule'
+
+    GroupMember:
+      type: object
+      description: A Group member.
+      properties:
+        accountId:
+          type: string
+          description: The member's account ID.
+        email:
+          type: string
+          description: The member's email address.
+          format: email
+        groupId:
+          type: string
+          description: The Group ID.
+        groupName:
+          type: string
+          description: The Group name.
+        region:
+          type: string
+          description: Region for the member's data.
+        s3Endpoint:
+          type: string
+          description: S3 Compatible API endpoint.
+
+    Group:
+      type: object
+      description: A Backblaze partner Group.
+      properties:
+        groupId:
+          type: string
+        groupName:
+          type: string
+        groupProducts:
+          type: array
+          items:
+            type: string
+            enum:
+              - BACKUP
+              - STORAGE
+        accountStandingDetails:
+          type: object
+          properties:
+            state:
+              type: string
+              example: "B2_GOOD_STANDING"
+        b2Stats:
+          $ref: '#/components/schemas/B2Stats'
+        groupStats:
+          type: object
+          properties:
+            createdTimestamp:
+              type: string
+            groupStatsAsOfTimestamp:
+              type: string
+              nullable: true
+            memberCount:
+              type: integer
+
+    B2Stats:
+      type: object
+      description: B2 usage statistics (generated daily).
+      properties:
+        b2BytesStoredCount:
+          type: integer
+        b2FilesStoredCount:
+          type: integer
+        b2StatsAsOfTimestamp:
+          type: string
+          nullable: true
+        bucketCount:
+          type: integer

@@ -1,0 +1,153 @@
+instances:
+  - url: backblaze.docs.buildwithfern.com
+
+title: Backblaze B2 | Documentation
+
+logo:
+  light: assets/logo.png
+  dark: assets/logo-dark.png
+  height: 28
+  href: https://www.backblaze.com
+
+favicon: assets/favicon.png
+
+colors:
+  accent-primary:
+    light: "#CC1A24"
+    dark: "#FF4D56"
+  background:
+    light: "#FFFFFF"
+    dark: "#111111"
+
+navbar-links:
+  - type: secondary
+    text: Backblaze Home
+    url: https://www.backblaze.com
+  - type: secondary
+    text: Sign In
+    url: https://secure.backblaze.com/user_signin.htm
+
+tabs:
+  guides:
+    display-name: Guides
+    icon: fa-solid fa-book
+  b2-native-api:
+    display-name: B2 Native API
+    icon: fa-solid fa-code
+  s3-compatible-api:
+    display-name: S3-Compatible API
+    icon: fa-brands fa-aws
+  partner-api:
+    display-name: Partner API
+    icon: fa-solid fa-handshake
+
+navigation:
+  - tab: guides
+    layout:
+      - section: Getting Started
+        contents:
+          - page: Welcome
+            path: pages/welcome.mdx
+            icon: fa-solid fa-house
+          - page: Developer Quickstart
+            path: pages/guides/quickstart.mdx
+            icon: fa-solid fa-rocket
+          - page: Authentication
+            path: pages/guides/authentication.mdx
+            icon: fa-solid fa-key
+          - page: Error Handling
+            path: pages/guides/error-handling.mdx
+            icon: fa-solid fa-triangle-exclamation
+      - section: API Guides
+        contents:
+          - page: B2 Native API
+            path: pages/guides/native-api.mdx
+            icon: fa-solid fa-code
+          - page: S3-Compatible API
+            path: pages/guides/s3-compatible-api.mdx
+            icon: fa-brands fa-aws
+          - page: Partner API
+            path: pages/guides/partner-api.mdx
+            icon: fa-solid fa-handshake
+
+  - tab: b2-native-api
+    layout:
+      - api: B2 Native API
+        api-name: b2-native-api
+        skip-slug: true
+        flattened: true
+        layout:
+          - section: Authentication
+            contents:
+              - GET /b2api/v4/b2_authorize_account
+          - section: Buckets
+            contents:
+              - POST /b2api/v4/b2_create_bucket
+              - POST /b2api/v4/b2_delete_bucket
+              - POST /b2api/v4/b2_list_buckets
+              - POST /b2api/v4/b2_update_bucket
+          - section: Files
+            contents:
+              - POST /b2api/v4/b2_upload_file
+              - GET /b2api/v4/b2_download_file_by_id
+              - GET /file/{bucketName}/{fileName}
+              - GET /b2api/v4/b2_get_file_info
+              - GET /b2api/v4/b2_list_file_names
+              - GET /b2api/v4/b2_list_file_versions
+              - POST /b2api/v4/b2_copy_file
+              - POST /b2api/v4/b2_hide_file
+              - POST /b2api/v4/b2_delete_file_version
+              - GET /b2api/v4/b2_get_upload_url
+              - POST /b2api/v4/b2_get_download_authorization
+              - POST /b2api/v4/b2_update_file_legal_hold
+              - POST /b2api/v4/b2_update_file_retention
+          - section: Large Files
+            contents:
+              - POST /b2api/v4/b2_start_large_file
+              - GET /b2api/v4/b2_get_upload_part_url
+              - POST /b2api/v4/b2_upload_part
+              - POST /b2api/v4/b2_copy_part
+              - POST /b2api/v4/b2_finish_large_file
+              - POST /b2api/v4/b2_cancel_large_file
+              - GET /b2api/v4/b2_list_parts
+              - GET /b2api/v4/b2_list_unfinished_large_files
+          - section: Keys
+            contents:
+              - POST /b2api/v4/b2_create_key
+              - POST /b2api/v4/b2_delete_key
+              - GET /b2api/v4/b2_list_keys
+          - section: Notifications
+            contents:
+              - GET /b2api/v4/b2_get_bucket_notification_rules
+              - POST /b2api/v4/b2_set_bucket_notification_rules
+
+  - tab: s3-compatible-api
+    layout:
+      - api: S3-Compatible API
+        api-name: s3-compatible-api
+        skip-slug: true
+        flattened: true
+
+  - tab: partner-api
+    layout:
+      - api: Partner API
+        api-name: partner-api
+        skip-slug: true
+        flattened: true
+        layout:
+          - section: Authentication
+            contents:
+              - GET /b2api/v3/b2_authorize_account
+          - section: Group Management
+            contents:
+              - POST /b2api/v3/b2_create_group_member
+              - POST /b2api/v3/b2_eject_group_member
+              - GET /b2api/v3/b2_list_groups
+              - GET /b2api/v3/b2_list_group_members
+          - section: Trial Management
+            contents:
+              - POST /b2api/v3/b2_reserve_trial_create_account
+          - section: Computer Management
+            contents:
+              - POST /api/backup/v1/bz_delete_computer
+              - GET /api/backup/v1/bz_list_computers

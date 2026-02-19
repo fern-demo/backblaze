@@ -1,0 +1,60 @@
+---
+title: Partner API
+description: Programmatically create and manage Backblaze B2 Cloud Storage accounts and groups.
+---
+
+The Backblaze Partner API empowers you to programmatically create and manage a large number of Backblaze B2 Cloud Storage accounts and groups within your applications.
+
+## Overview
+
+The Partner API enables you to automate the following:
+
+- **Account creation** — Add new Group members by creating Backblaze accounts.
+- **Organize accounts** — Group accounts together for management.
+- **List Groups** — View all active Groups you administer.
+- **List Group members** — View members within a specific Group.
+- **Eject members** — Remove a member from a Group.
+
+## Prerequisites
+
+1. [Create a Backblaze account](https://www.backblaze.com/b2/sign-up.html).
+2. [Enable Business Groups and B2 Cloud Storage](https://www.backblaze.com/docs/cloud-storage-create-a-partner-account).
+3. [Create a Group](https://www.backblaze.com/docs/cloud-storage-create-a-group-for-the-partner-api) for organizing member accounts.
+4. [Create a Master Application Key](https://www.backblaze.com/docs/cloud-storage-create-a-master-app-key-for-the-partner-api).
+5. [Contact sales](mailto:contactsales@backblaze.com) for access to the API.
+
+## Authentication
+
+The Partner API requires an authorization token obtained by calling `b2_authorize_account` (v3) with your master application key. The response includes the `groupsApiUrl` which should be used as the base URL for all Partner API calls.
+
+## Request and Response Formats
+
+### Status Codes
+
+| Status | Description |
+|---|---|
+| `200` | The request was successful. |
+| `204` | The request was successful with no content. |
+| `400` | Bad request — invalid parameters. |
+| `401` | Unauthorized — invalid credentials or permissions. |
+| `408` | Request timeout. |
+| `429` | Too many requests — rate limited. |
+| `500` | Internal error. |
+| `503` | Service unavailable — retry with exponential backoff. |
+
+### Error Format
+
+All error responses return a JSON structure:
+
+```json
+{
+  "status": 400,
+  "code": "invalid_group_id",
+  "message": "group Id is invalid or is not authorized"
+}
+```
+
+## Limits
+
+- Maximum of **500 Groups** per admin.
+- Maximum of **5,000 members** per Group.

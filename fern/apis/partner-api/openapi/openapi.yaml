@@ -1,0 +1,767 @@
+openapi: 3.1.0
+info:
+  title: Backblaze Partner API
+  version: "1.0.0"
+  description: |
+    The Backblaze Partner API enables partners to programmatically create and manage Backblaze B2 Cloud Storage accounts and groups.
+
+    Partners can use this API to manage groups, group members, trial accounts, and computer backups associated with their organization.
+
+    ## Authentication
+
+    The Partner API uses application keys to authenticate requests. Call `b2_authorize_account` with HTTP Basic authentication to obtain an authorization token and base URLs for subsequent API calls. The authorization token is valid for at most 24 hours.
+
+    ## Error Handling
+
+    All error responses share a common JSON structure with `status`, `code`, and `message` fields.
+  contact:
+    name: Backblaze
+    url: https://www.backblaze.com
+  license:
+    name: Proprietary
+    url: https://www.backblaze.com/company/policy/terms
+
+servers:
+  - url: https://api.backblazeb2.com
+    description: Backblaze B2 API
+
+tags:
+  - name: Authentication
+    description: Authorize and obtain API tokens
+  - name: Group Management
+    description: Create, eject, and list group members and groups
+  - name: Trial Management
+    description: Create and manage B2 Reserve trial accounts
+  - name: Computer Management
+    description: List and delete computer backups
+
+paths:
+  # ──────────────────────────────────────────────
+  # Authentication
+  # ──────────────────────────────────────────────
+  /b2api/v3/b2_authorize_account:
+    get:
+      operationId: b2_authorize_account
+      summary: Authorize account (Partner API)
+      description: |
+        Returns an authorization token for the Partner API. Uses HTTP Basic authentication with your master application key. The v3 endpoint returns both B2 Native API and Partner API information.
+      tags:
+        - Authentication
+      security:
+        - basicAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationBasic'
+      responses:
+        "200":
+          description: Authorization successful.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuthorizeAccountResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: |
+            Unauthorized. The `applicationKeyId` and/or `applicationKey` are wrong, or the key is only valid for a later API version.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  # ──────────────────────────────────────────────
+  # Group Management
+  # ──────────────────────────────────────────────
+  /b2api/v3/b2_create_group_member:
+    post:
+      operationId: b2_create_group_member
+      summary: Create a group member
+      description: |
+        Creates a new Backblaze account and adds it to a Group as a Group member. The email must not already exist as a Backblaze account. Limit of 5,000 members per Group.
+      tags:
+        - Group Management
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - adminAccountId
+                - groupId
+                - memberEmail
+              properties:
+                adminAccountId:
+                  type: string
+                  description: The `accountId` of the Group admin.
+                groupId:
+                  type: string
+                  description: The Group ID.
+                memberEmail:
+                  type: string
+                  description: New Group member's email. Cannot already be an existing Backblaze account.
+                  format: email
+                region:
+                  type: string
+                  description: Region for the new account's data.
+                  enum:
+                    - us-east
+                    - us-west
+                    - eu-central
+      responses:
+        "200":
+          description: Group member created successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  applicationKeyId:
+                    type: string
+                    description: B2 application key ID for the new member.
+                  applicationKey:
+                    type: string
+                    description: B2 application key for the new member.
+                  groupMember:
+                    $ref: '#/components/schemas/GroupMember'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: |
+            Unauthorized. Possible codes: `too_many_members`, `invalid_group_id`, `invalid_email`, `invalid_region`, `unauthorized`, `bad_auth_token`, `expired_auth_token`, `method_failure`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v3/b2_eject_group_member:
+    post:
+      operationId: b2_eject_group_member
+      summary: Eject a group member
+      description: |
+        Ejects a Group member from a Group. Does not delete the Backblaze account, but removes it from the Group. Ejected members must reset their password on next login.
+      tags:
+        - Group Management
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - adminAccountId
+                - groupId
+                - memberAccountId
+              properties:
+                adminAccountId:
+                  type: string
+                  description: The `accountId` of the Group admin.
+                groupId:
+                  type: string
+                  description: The Group ID.
+                memberAccountId:
+                  type: string
+                  description: The `accountId` of the member being ejected.
+                email:
+                  type: string
+                  description: If provided and different from current email, changes the member's email after ejection.
+                  format: email
+      responses:
+        "200":
+          description: Group member ejected successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GroupMember'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          description: |
+            Unauthorized. Possible codes: `invalid_member_account_id`, `invalid_group_id`, `invalid_email`, `unauthorized`, `bad_auth_token`.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /b2api/v3/b2_list_groups:
+    get:
+      operationId: b2_list_groups
+      summary: List groups
+      description: |
+        Lists active Groups for an authorized Group admin. A single admin can administer a maximum of 500 groups.
+      tags:
+        - Group Management
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: adminAccountId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The `accountId` of the Group admin.
+        - name: groupName
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Filter by Group name.
+        - name: startGroupId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: Starting `groupId` for pagination.
+        - name: maxGroupCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 100
+          description: Number of Groups to return.
+      responses:
+        "200":
+          description: Groups listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  accountId:
+                    type: string
+                  groups:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Group'
+                  nextGroupId:
+                    type: string
+                    nullable: true
+                    description: Pass as `startGroupId` for the next page, or null.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /b2api/v3/b2_list_group_members:
+    get:
+      operationId: b2_list_group_members
+      summary: List group members
+      description: |
+        Lists active Group members for a specific Group. Limit of 5,000 members per Group.
+      tags:
+        - Group Management
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: adminAccountId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The `accountId` of the Group admin.
+        - name: groupId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: The Group ID.
+        - name: startEmail
+          in: query
+          required: false
+          schema:
+            type: string
+          description: First email to return for pagination.
+        - name: maxMemberCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 100
+            maximum: 1000
+          description: Maximum number of members to return.
+      responses:
+        "200":
+          description: Group members listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  groupId:
+                    type: string
+                  groupName:
+                    type: string
+                  groupMembers:
+                    type: array
+                    items:
+                      allOf:
+                        - $ref: '#/components/schemas/GroupMember'
+                        - type: object
+                          properties:
+                            b2Stats:
+                              $ref: '#/components/schemas/B2Stats'
+                  nextEmail:
+                    type: string
+                    nullable: true
+                    description: Pass as `startEmail` for the next page, or null.
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  # ──────────────────────────────────────────────
+  # Trial Management
+  # ──────────────────────────────────────────────
+  /b2api/v3/b2_reserve_trial_create_account:
+    post:
+      operationId: b2_reserve_trial_create_account
+      summary: Create trial account
+      description: |
+        Creates a new Backblaze B2 account and starts a B2 Reserve trial. A B2 Reserve Trial gives an end user time-limited access to all of B2 Reserve's product features for evaluation. New Backblaze accounts will receive an invitation email asking them to reset their password. Warning: The email for the new trial account must not already exist as a Backblaze account.
+      tags:
+        - Trial Management
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: array
+              items:
+                $ref: '#/components/schemas/ReserveTrialRequest'
+      responses:
+        "200":
+          description: Trial account(s) created successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReserveTrialResponse'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+        "403":
+          $ref: '#/components/responses/Forbidden'
+
+  # ──────────────────────────────────────────────
+  # Computer Management
+  # ──────────────────────────────────────────────
+  /api/backup/v1/bz_delete_computer:
+    post:
+      operationId: bz_delete_computer
+      summary: Delete a computer backup
+      description: |
+        Deletes a backup from an account. The accountId must be associated with a group with Enterprise Controls enabled. The caller must be an admin of that group. The Enterprise Controls setting "All Group admins can delete any Group member backups" must be enabled.
+      tags:
+        - Computer Management
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - accountId
+                - computerId
+              properties:
+                accountId:
+                  type: string
+                  description: The accountId to which the backup belongs.
+                computerId:
+                  type: string
+                  description: The unique identifier of the computer to delete.
+      responses:
+        "200":
+          description: Computer backup deleted successfully.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Computer'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+        "401":
+          $ref: '#/components/responses/Unauthorized'
+
+  /api/backup/v1/bz_list_computers:
+    get:
+      operationId: bz_list_computers
+      summary: List computer backups
+      description: |
+        Provides a list of active computer backups for an account. The accountId must be associated with a group with Enterprise Controls enabled. The caller must be an admin. Previously deleted or canceled backups will not be returned.
+      tags:
+        - Computer Management
+      security:
+        - authorizationToken: []
+      parameters:
+        - $ref: '#/components/parameters/AuthorizationToken'
+        - name: accountId
+          in: query
+          required: true
+          schema:
+            type: string
+          description: Account identifier.
+        - name: startComputerId
+          in: query
+          required: false
+          schema:
+            type: string
+          description: For pagination, the starting computer ID.
+        - name: maxComputerCount
+          in: query
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 500
+            default: 100
+          description: Maximum number of computers to return.
+      responses:
+        "200":
+          description: Computer backups listed successfully.
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  nextComputerId:
+                    type: string
+                    nullable: true
+                    description: Pass as `startComputerId` for the next page, or null if no more results.
+                  computers:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Computer'
+        "400":
+          $ref: '#/components/responses/BadRequest'
+
+# ════════════════════════════════════════════════
+# Components
+# ════════════════════════════════════════════════
+components:
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+      description: |
+        HTTP Basic authentication using `applicationKeyId:applicationKey` encoded in Base64. The account ID can be used in place of the master application key ID.
+    authorizationToken:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: |
+        An authorization token obtained from `b2_authorize_account`. Valid for at most 24 hours.
+
+  parameters:
+    AuthorizationToken:
+      name: Authorization
+      in: header
+      required: true
+      schema:
+        type: string
+      description: Authorization token from `b2_authorize_account`.
+    AuthorizationBasic:
+      name: Authorization
+      in: header
+      required: true
+      schema:
+        type: string
+      description: HTTP Basic auth value (`Basic base64(applicationKeyId:applicationKey)`).
+
+  responses:
+    BadRequest:
+      description: Bad request. The request had the wrong fields or illegal values.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: |
+        Unauthorized. Possible codes: `bad_auth_token`, `expired_auth_token`, `unauthorized`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Forbidden:
+      description: |
+        Forbidden. Possible codes: `access_denied`, `transaction_cap_exceeded`, `cap_exceeded`.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  schemas:
+    Error:
+      type: object
+      description: Standard error response.
+      properties:
+        status:
+          type: integer
+          description: The numeric HTTP status code.
+          example: 400
+        code:
+          type: string
+          description: A single-identifier code that identifies the error.
+          example: "bad_request"
+        message:
+          type: string
+          description: A human-readable message describing what went wrong.
+          example: "The request had the wrong fields or illegal values."
+      required:
+        - status
+        - code
+        - message
+
+    AuthorizeAccountResponse:
+      type: object
+      properties:
+        accountId:
+          type: string
+          description: The identifier for the account.
+          example: "ACCOUNT_ID"
+        authorizationToken:
+          type: string
+          description: Authorization token for subsequent calls. Valid for at most 24 hours.
+          example: "AUTHORIZATION_TOKEN"
+        applicationKeyExpirationTimestamp:
+          type: integer
+          nullable: true
+          description: Expiration timestamp for the application key.
+        apiInfo:
+          type: object
+          properties:
+            storageApi:
+              type: object
+              description: Information for the B2 Native API.
+              properties:
+                absoluteMinimumPartSize:
+                  type: integer
+                  description: The smallest possible size of a part of a large file (except the last one).
+                  example: 5000000
+                apiUrl:
+                  type: string
+                  description: Base URL for all API calls except uploading and downloading files.
+                  example: "https://api001.backblazeb2.com"
+                allowed:
+                  type: object
+                  description: Application key restrictions.
+                  properties:
+                    buckets:
+                      type: array
+                      description: Buckets the key is restricted to.
+                      items:
+                        type: object
+                        properties:
+                          id:
+                            type: string
+                          name:
+                            type: string
+                            nullable: true
+                    capabilities:
+                      type: array
+                      items:
+                        type: string
+                    namePrefix:
+                      type: string
+                      nullable: true
+                      description: File name prefix restriction.
+                downloadUrl:
+                  type: string
+                  description: Base URL for downloading files.
+                  example: "https://f001.backblazeb2.com"
+                recommendedPartSize:
+                  type: integer
+                  description: The recommended file part size.
+                  example: 100000000
+                s3ApiUrl:
+                  type: string
+                  description: Base URL for the S3 Compatible API.
+                  example: "https://s3.us-west-001.backblazeb2.com"
+            groupsApi:
+              type: object
+              description: Information for the Partner API.
+              properties:
+                capabilities:
+                  type: array
+                  items:
+                    type: string
+                  example: ["all"]
+                groupsApiUrl:
+                  type: string
+                  description: Base URL for all Partner API calls.
+                  example: "https://api001.backblazeb2.com"
+                infoType:
+                  type: string
+                  example: "groupsApi"
+
+    GroupMember:
+      type: object
+      description: A Group member.
+      properties:
+        accountId:
+          type: string
+          description: The member's account ID.
+        email:
+          type: string
+          description: The member's email address.
+          format: email
+        groupId:
+          type: string
+          description: The Group ID.
+        groupName:
+          type: string
+          description: The Group name.
+        region:
+          type: string
+          description: Region for the member's data.
+        s3Endpoint:
+          type: string
+          description: S3 Compatible API endpoint.
+
+    Group:
+      type: object
+      description: A Backblaze partner Group.
+      properties:
+        groupId:
+          type: string
+        groupName:
+          type: string
+        groupProducts:
+          type: array
+          items:
+            type: string
+            enum:
+              - BACKUP
+              - STORAGE
+        accountStandingDetails:
+          type: object
+          properties:
+            state:
+              type: string
+              example: "B2_GOOD_STANDING"
+        b2Stats:
+          $ref: '#/components/schemas/B2Stats'
+        groupStats:
+          type: object
+          properties:
+            createdTimestamp:
+              type: string
+            groupStatsAsOfTimestamp:
+              type: string
+              nullable: true
+            memberCount:
+              type: integer
+
+    B2Stats:
+      type: object
+      description: B2 usage statistics (generated daily).
+      properties:
+        b2BytesStoredCount:
+          type: integer
+        b2FilesStoredCount:
+          type: integer
+        b2StatsAsOfTimestamp:
+          type: string
+          nullable: true
+        bucketCount:
+          type: integer
+
+    Computer:
+      type: object
+      description: A computer backup entry.
+      properties:
+        computerId:
+          type: string
+          description: The unique identifier of the computer.
+        computerName:
+          type: string
+          description: The name of the computer.
+        lastFileUploadedTimestamp:
+          type: integer
+          description: Timestamp of the last file uploaded from this computer.
+
+    ReserveTrialRequest:
+      type: object
+      description: Request to create a B2 Reserve trial account.
+      required:
+        - email
+        - term
+        - storage
+      properties:
+        email:
+          type: string
+          description: Email for the new B2 account. Must not already exist as a Backblaze account.
+          format: email
+        region:
+          type: string
+          description: Region for the new account's data.
+          enum:
+            - us-west
+            - us-east
+            - eu-central
+        term:
+          type: integer
+          description: Duration of the trial in days.
+          minimum: 7
+          maximum: 30
+        storage:
+          type: integer
+          description: Storage allocation in TB.
+          minimum: 1
+          maximum: 50
+
+    ReserveTrialResponse:
+      type: object
+      description: Response after creating a B2 Reserve trial account.
+      properties:
+        accountId:
+          type: string
+          description: Account ID of the new B2 account.
+        applicationKey:
+          type: string
+          description: Application key for the new account.
+        applicationKeyId:
+          type: string
+          description: Application key ID for the new account.
+        s3Endpoint:
+          type: string
+          description: S3 endpoint domain for the new account.
+        startDate:
+          type: string
+          description: Trial start date in ISO 8601 format.
+          format: date-time
+        endDate:
+          type: string
+          description: Trial end date in ISO 8601 format.
+          format: date-time
+        email:
+          type: string
+          description: Email for the account.
+          format: email
+        bucketName:
+          type: string
+          description: Name of the accessible bucket.
+        bucketId:
+          type: string
+          description: ID of the accessible bucket.

@@ -1,0 +1,48 @@
+---
+title: B2 Native API
+description: Overview of the Backblaze B2 Native API for interacting with B2 Cloud Storage.
+---
+
+The Backblaze B2 Cloud Storage Native API is Backblaze's custom API that enables you to interact with Backblaze B2. It provides full functionality for file upload/download, bucket management, application key management, and more.
+
+## Getting Started
+
+1. Create a [Backblaze](https://www.backblaze.com/) account and [enable Backblaze B2](https://www.backblaze.com/docs/cloud-storage-enable-backblaze-b2).
+2. Create an [application key](/docs/guides/authentication) to authenticate your API requests.
+3. Call `b2_authorize_account` to obtain an authorization token and base URLs.
+4. Use the authorization token for subsequent API calls.
+
+## API Base URL
+
+The base URL for most B2 Native API operations is returned by the `b2_authorize_account` call. It looks similar to `https://apiNNN.backblazeb2.com`, where `NNN` is the cluster number.
+
+## Key Management
+
+Key management is unique to the Native API (the S3-Compatible API does not support it). You can:
+
+- **Create keys** with `b2_create_key` — Restrict by bucket, file prefix, capabilities, and expiration.
+- **List keys** with `b2_list_keys` — View all application keys associated with your account.
+- **Delete keys** with `b2_delete_key` — Revoke access by deleting a key.
+
+## Pre-Signed URLs
+
+Instead of pre-signed URLs, the Native API uses authorization tokens. The `b2_authorize_account` request provides a token for all account-level operations. For download-only access, use `b2_get_download_authorization` to generate a scoped token.
+
+## Large File Uploads
+
+Files larger than the recommended part size (typically 100 MB) should be uploaded in parts:
+
+1. **Start** — Call `b2_start_large_file` to get a file ID.
+2. **Get Upload URL** — Call `b2_get_upload_part_url` to get a URL and token for uploading parts.
+3. **Upload Parts** — Call `b2_upload_part` for each part (1 to 10,000 parts).
+4. **Finish** — Call `b2_finish_large_file` with the SHA1 checksums of all parts.
+
+If you need to cancel, call `b2_cancel_large_file` to clean up.
+
+## Supported Connection Protocols
+
+Only HTTPS requests are supported. FTP and SSH are not officially supported.
+
+## API Versions
+
+The current B2 Native API version is **v4**. Key changes in v4 include support for Multi-Bucket Application Keys. See the [API Versions](https://www.backblaze.com/docs/cloud-storage-native-api-versions) page for detailed version history.
