@@ -1,0 +1,923 @@
+paths:
+  /b2api/v4/b2_delete_file_version:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            fileName: project-report-2024.pdf
+            fileId: 4_z1f8e9d7c8b9a1234567890abcdef1234
+          response:
+            body:
+              fileId: 4_z1f8e9d7c8b9a1234567890abcdef1234
+              fileName: project-report-2024.pdf
+  /b2api/v4/b2_get_upload_url:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            bucketId: bucketId
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              bucketId: 4a1b2c3d4e5f678901234567
+              uploadUrl: https://pod-000-1234.backblazeb2.com/b2api/v2/b2_upload_file?bucketId=4a1b2c3d4e5f678901234567
+              authorizationToken: 00112233445566778899aabbccddeeff00112233
+  /b2api/v4/b2_update_file_legal_hold:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            fileName: project_proposal.pdf
+            fileId: 4_z1f2e3d4c5b6a7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3
+            legalHold: 'on'
+          response:
+            body:
+              fileId: 4_z1f2e3d4c5b6a7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2d3
+              fileName: project_proposal.pdf
+              legalHold: 'on'
+  /b2api/v4/b2_update_file_retention:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            fileName: project_report_final.pdf
+            fileId: 4_z1f2e3d4c5b6a7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2
+          response:
+            body:
+              fileId: 4_z1f2e3d4c5b6a7e8f9g0h1i2j3k4l5m6n7o8p9q0r1s2t3u4v5w6x7y8z9a0b1c2
+              fileName: project_report_final.pdf
+              fileRetention:
+                isClientAuthorizedToRead: true
+                value:
+                  mode: compliance
+                  retainUntilTimestamp: 1735689600000
+  /b2api/v4/b2_get_upload_part_url:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            fileId: fileId
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              fileId: 4_z4f8e3d2c1b7a6e5f9d0c3b2a1e8d7c6f_00000123456789abcdef
+              uploadUrl: https://pod-000-1234-5678.backblazeb2.com/b2api/v2/b2_upload_part
+              authorizationToken: 4_za89f0e1d2c3b4a5f6e7d8c9b0a1e2f3g4h5i6j7k8l9m0n1o2p3q4r5s6t7u8v9
+  /b2api/v4/b2_cancel_large_file:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            fileId: 4_z1f8e9d7c8b9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5
+          response:
+            body:
+              fileId: 4_z1f8e9d7c8b9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5
+              accountId: account-1234567890abcdef
+              bucketId: bucket-0987654321fedcba
+              fileName: project_backup_2024_06_15.zip
+  /b2api/v4/b2_create_key:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            accountId: a1b2c3d4e5f6
+            capabilities:
+              - listKeys
+              - writeFiles
+              - readBuckets
+            keyName: backup-service-key
+          response:
+            body:
+              keyName: backup-service-key
+              applicationKeyId: 4a5b6c7d-8e9f-0123-4567-89abcdef0123
+              applicationKey: K001a2b3c4d5e6f7g8h9i0jklmnopqrstuv
+              capabilities:
+                - listKeys
+                - writeFiles
+                - readBuckets
+              accountId: a1b2c3d4e5f6
+              expirationTimestamp: 1704067200000
+              bucketIds:
+                - bucket12345
+                - bucket67890
+              namePrefix: backup/
+              options:
+                - s3
+  /b2api/v4/b2_list_parts:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            fileId: fileId
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              parts:
+                - fileId: 4_z4f8e2a7b8c9d0e1f2a3b4c5d6e7f8g9h0i1j2k3l4m5n6o7p8q9r0s
+                  partNumber: 1
+                  contentLength: 5242880
+                  contentSha1: 3a7bd3e2360a3d80f9a1b2c3d4e5f67890123456
+                  contentMd5: 1B2M2Y8AsgTpgAmY7PhCfg==
+                  serverSideEncryption:
+                    algorithm: AES256
+                    mode: SSE-B2
+                  uploadTimestamp: 1685600000000
+              nextPartNumber: 2
+  /b2api/v4/b2_get_download_authorization:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            bucketId: 4a5b6c7d8e9f0123456789ab
+            fileNamePrefix: documents/reports/2024/
+            validDurationInSeconds: 3600
+          response:
+            body:
+              bucketId: 4a5b6c7d8e9f0123456789ab
+              fileNamePrefix: documents/reports/2024/
+              authorizationToken: k7f8g9h0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7a8b9c0d1e2f3g4h5i6j7k8
+  /b2api/v4/b2_delete_key:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            applicationKeyId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a6b7e
+          response:
+            body:
+              keyName: BackupServiceKey
+              applicationKeyId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a6b7e
+              capabilities:
+                - listKeys
+                - deleteKeys
+                - writeFiles
+              accountId: 1234567890abcdef
+              expirationTimestamp: 1704067200
+              bucketIds:
+                - bucket-001
+                - bucket-002
+              namePrefix: backup_
+              options:
+                - s3
+  /b2api/v4/b2_hide_file:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            bucketId: 4a1b2c3d4e5f678901234567
+            fileName: project_docs/meeting_notes_2024_06_15.txt
+          response:
+            body:
+              accountId: 00112233445566778899aabbccddeeff
+              action: hide
+              bucketId: 4a1b2c3d4e5f678901234567
+              contentLength: 0
+              contentSha1: 'null'
+              contentMd5: 'null'
+              contentType: application/x-bz-hide-marker
+              fileId: 4_z4a1b2c3d4e5f678901234567_f1234567890abcdef1234567_v0000017
+              fileInfo: {}
+              fileName: project_docs/meeting_notes_2024_06_15.txt
+              fileRetention:
+                isClientAuthorizedToRead: true
+                value:
+                  mode: compliance
+                  retainUntilTimestamp: 1710000000000
+              legalHold:
+                isClientAuthorizedToRead: true
+                value: 'off'
+              replicationStatus: PENDING
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1686825600000
+  /b2api/v4/b2_authorize_account:
+    get:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          response:
+            body:
+              accountId: a1b2c3d4e5f6g7h8i9j0
+              authorizationToken: 00112233445566778899aabbccddeeff00112233
+              applicationKeyExpirationTimestamp: 1711929600
+              apiInfo:
+                storageApi:
+                  absoluteMinimumPartSize: 5000000
+                  apiUrl: https://api003.backblazeb2.com
+                  allowed:
+                    buckets:
+                      - id: 4a5b6c7d8e9f0a1b2c3d4e5f
+                        name: project-backups
+                    capabilities:
+                      - listBuckets
+                      - readFiles
+                      - writeFiles
+                    namePrefix: backup_
+                  downloadUrl: https://f003.backblazeb2.com
+                  recommendedPartSize: 100000000
+                  s3ApiUrl: https://s3.us-west-002.backblazeb2.com
+  /b2api/v4/b2_copy_part:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            sourceFileId: 4_z4f8e3b2c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0
+            largeFileId: 4_z4f8e3b2c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f1
+            partNumber: 3
+          response:
+            body:
+              fileId: 4_z4f8e3b2c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f1
+              partNumber: 3
+              contentLength: 5242880
+              contentSha1: 3a7bd3e2360a3d4f5e6b7c8d9e0f1a2b3c4d5e6f
+              contentMd5: 1B2M2Y8AsgTpgAmY7PhCfg==
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1685600000000
+  /b2api/v4/b2_finish_large_file:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            fileId: 4_z1f8e9d7c8b9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5
+            partSha1Array:
+              - 3a5f1e2d4c6b7a8e9f0d1c2b3a4e5f6d7c8b9a0b
+          response:
+            body:
+              accountId: acc-1234567890abcdef
+              action: upload
+              bucketId: bucket-0987654321fedcba
+              contentLength: 52428800
+              contentSha1: none
+              contentMd5: d41d8cd98f00b204e9800998ecf8427e
+              contentType: application/octet-stream
+              fileId: 4_z1f8e9d7c8b9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5
+              fileInfo: {}
+              fileName: project_backup_2024_06_15.zip
+              fileRetention:
+                isClientAuthorizedToRead: true
+                value:
+                  mode: compliance
+                  retainUntilTimestamp: 1710000000000
+              legalHold:
+                isClientAuthorizedToRead: true
+                value: 'on'
+              replicationStatus: PENDING
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1686825600000
+  /b2api/v4/b2_list_keys:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            accountId: accountId
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              keys:
+                - keyName: BackupServiceKey
+                  applicationKeyId: 4_abcdef1234567890abcdef12
+                  capabilities:
+                    - listKeys
+                    - readBuckets
+                    - writeFiles
+                    - deleteFiles
+                  accountId: account-1234567890abcdef
+                  expirationTimestamp: 1711929600000
+                  bucketIds:
+                    - bucket-0987654321fedcba
+                  namePrefix: backup/
+                  options:
+                    - s3
+              nextApplicationKeyId: 4_bcdef1234567890abcdef123
+  /b2api/v4/b2_start_large_file:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            bucketId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a6b7e
+            fileName: project_backup_2024_06_15.zip
+            contentType: application/zip
+          response:
+            body:
+              accountId: acc-1234567890abcdef
+              action: start
+              bucketId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a6b7e
+              contentLength: 0
+              contentSha1: none
+              contentMd5: d41d8cd98f00b204e9800998ecf8427e
+              contentType: application/zip
+              fileId: 4_z4f5a6b7e9c1d4a7f3e2b8e72d3c9f1a6b7e_c000_v0001234_t0001
+              fileInfo: {}
+              fileName: project_backup_2024_06_15.zip
+              fileRetention:
+                isClientAuthorizedToRead: true
+                value:
+                  mode: compliance
+                  retainUntilTimestamp: 1710000000000
+              legalHold:
+                isClientAuthorizedToRead: true
+                value: 'on'
+              replicationStatus: PENDING
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1710000000000
+  /b2api/v4/b2_update_bucket:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            bucketId: 4a48fe8875c6214145260818
+          response:
+            body:
+              accountId: a1b2c3d4e5f6789012345678
+              bucketId: 4a48fe8875c6214145260818
+              bucketName: project-backups
+              bucketType: allPrivate
+              bucketInfo: {}
+              corsRules:
+                - corsRuleName: downloadFromAnyOrigin
+                  allowedOrigins:
+                    - https://example.com
+                  allowedHeaders:
+                    - range
+                    - authorization
+                  allowedOperations:
+                    - b2_download_file_by_id
+                    - b2_download_file_by_name
+                  exposeHeaders:
+                    - x-bz-content-sha1
+                    - x-bz-file-name
+                  maxAgeSeconds: 3600
+              fileLockConfiguration:
+                isClientAuthorizedToRead: true
+                value:
+                  defaultRetention:
+                    mode: compliance
+                    period:
+                      duration: 30
+                      unit: days
+                  isFileLockEnabled: true
+              defaultServerSideEncryption:
+                isClientAuthorizedToRead: true
+                value:
+                  algorithm: AES256
+                  mode: SSE-B2
+              lifecycleRules:
+                - daysFromHidingToDeleting: 30
+                  daysFromUploadingToHiding: 365
+                  fileNamePrefix: logs/
+              replicationConfiguration:
+                isClientAuthorizedToRead: true
+                value:
+                  asReplicationSource:
+                    replicationRules:
+                      - destinationBucketId: 9f8e7d6c5b4a321098765432
+                        fileNamePrefix: backup/
+                        includeExistingFiles: true
+                        isEnabled: true
+                        priority: 1
+                        replicationRuleName: dailyBackupReplication
+                    sourceApplicationKeyId: appKey1234567890abcdef
+                  asReplicationDestination:
+                    sourceToDestinationKeyMapping: {}
+              revision: 42
+              options:
+                - s3
+  /b2api/v4/b2_upload_file:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+            X-Bz-File-Name: X-Bz-File-Name
+            X-Bz-Content-Sha1: X-Bz-Content-Sha1
+          response:
+            body:
+              accountId: a1b2c3d4e5f6g7h8i9j0
+              action: upload
+              bucketId: 4a5b6c7d8e9f0a1b2c3d4e5f
+              contentLength: 5242880
+              contentSha1: 3a7bd3e2360a3d80f7a1e3b9f1c2d4e5f6789abc
+              contentMd5: 1bc29b36f623ba82aaf6724fd3b16718
+              contentType: image/png
+              fileId: 4_z4f8e9a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6q7r8s9t0u1v2w3x4y5z6
+              fileInfo:
+                author: Jane Doe
+                description: Marketing banner image
+              fileName: marketing%20banner%20april%202024.png
+              fileRetention:
+                isClientAuthorizedToRead: true
+                value:
+                  mode: compliance
+                  retainUntilTimestamp: 1711929600000
+              legalHold:
+                isClientAuthorizedToRead: true
+                value: 'off'
+              replicationStatus: COMPLETED
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1711843200000
+  /b2api/v4/b2_upload_part:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+            X-Bz-Part-Number: 1
+            X-Bz-Content-Sha1: X-Bz-Content-Sha1
+          request: <binary data of part 3>
+          response:
+            body:
+              fileId: 4_z4f8e3a1b2c3d4e5f6g7h8i9j0klmnopqrs
+              partNumber: 3
+              contentLength: 5242880
+              contentSha1: 3a7bd3e2360a3d4f5e6b7c8d9e0f1a2b3c4d5e6f
+              contentMd5: 1B2M2Y8AsgTpgAmY7PhCfg==
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1718131200000
+  /b2api/v4/b2_get_file_info:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            fileId: 4_z1f8e9d7c8b9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              accountId: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+              action: upload
+              bucketId: b2_bucket_1234567890abcdef
+              contentLength: 1048576
+              contentSha1: 3a7bd3e2360a3d80f6a1b2c3d4e5f67890123456
+              contentMd5: 1bc29b36f623ba82aaf6724fd3b16718
+              contentType: image/png
+              fileId: 4_z1f8e9d7c8b9a0b1c2d3e4f5g6h7i8j9k0l1m2n3o4p5q6r7s8t9u0v1w2x3y4z5
+              fileInfo:
+                author: Jane Doe
+                description: Marketing banner image
+              fileName: marketing_banner_2024.png
+              fileRetention:
+                isClientAuthorizedToRead: true
+                value:
+                  mode: compliance
+                  retainUntilTimestamp: 1711929600000
+              legalHold:
+                isClientAuthorizedToRead: true
+                value: 'off'
+              replicationStatus: COMPLETED
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1682899200000
+  /b2api/v4/b2_list_file_names:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            bucketId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a7b6e
+            startFileName: documents/report_2023.pdf
+            maxFileCount: 500
+            prefix: documents/
+            delimiter: /
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              files:
+                - accountId: 00112233-4455-6677-8899-aabbccddeeff
+                  action: upload
+                  bucketId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a7b6e
+                  contentLength: 24576
+                  contentSha1: 3a7bd3e2360a3f4b5c6d7e8f9a0b1c2d3e4f5a6b
+                  contentMd5: 9e107d9d372bb6826bd81d3542a419d6
+                  contentType: application/pdf
+                  fileId: 4_z4f92e3b7c8d9e0f1a2b3c4d5e6f7g8h9i0j1k2l3m4n5o6p7q8r9s0t1u2v3w4x5y6z7
+                  fileInfo:
+                    author: Jane Doe
+                    department: Finance
+                  fileRetention:
+                    isClientAuthorizedToRead: true
+                    value:
+                      mode: compliance
+                      retainUntilTimestamp: 1711929600000
+                  legalHold:
+                    isClientAuthorizedToRead: true
+                    value: 'off'
+                  replicationStatus: COMPLETED
+                  serverSideEncryption:
+                    algorithm: AES256
+                    mode: SSE-B2
+                  uploadTimestamp: 1688208000000
+              nextFileName: documents/report_2023_v2.pdf
+  /b2api/v4/b2_list_unfinished_large_files:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            bucketId: 4a7f3e2b-9c1d-4f5a-8b2e-123456789abc
+            namePrefix: projectX_backup_
+            startFileId: 4a7f3e2b-9c1d-4f5a-8b2e-abcdef123456
+            maxFileCount: 50
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              files:
+                - accountId: 00112233-4455-6677-8899-aabbccddeeff
+                  action: start
+                  bucketId: 4a7f3e2b-9c1d-4f5a-8b2e-123456789abc
+                  contentLength: 0
+                  contentSha1: none
+                  contentMd5: null
+                  contentType: null
+                  fileId: 3f5a8b2e-1234-5678-9abc-def012345678
+                  fileInfo:
+                    uploadedBy: backup-service
+                    project: ProjectX
+                  fileName: projectX_backup_20240601.tar.gz
+                  fileRetention:
+                    isClientAuthorizedToRead: true
+                    value:
+                      mode: compliance
+                      retainUntilTimestamp: 1711929600000
+                  legalHold:
+                    isClientAuthorizedToRead: true
+                    value: 'on'
+                  replicationStatus: PENDING
+                  serverSideEncryption:
+                    algorithm: AES256
+                    mode: SSE-B2
+                  uploadTimestamp: 1711843200000
+              nextFileId: 3f5a8b2e-1234-5678-9abc-def012345679
+  /b2api/v4/b2_delete_bucket:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            accountId: a1b2c3d4e5f6g7h8i9j0
+            bucketId: 4a48fe8875c6214145260818
+          response:
+            body:
+              accountId: a1b2c3d4e5f6g7h8i9j0
+              bucketId: 4a48fe8875c6214145260818
+              bucketName: project-backups
+              bucketType: allPrivate
+              bucketInfo: {}
+              corsRules:
+                - corsRuleName: downloadFromAnyOrigin
+                  allowedOrigins:
+                    - https://example.com
+                  allowedHeaders:
+                    - range
+                    - authorization
+                  allowedOperations:
+                    - b2_download_file_by_id
+                    - b2_download_file_by_name
+                  exposeHeaders:
+                    - x-bz-content-sha1
+                  maxAgeSeconds: 3600
+              fileLockConfiguration:
+                isClientAuthorizedToRead: true
+                value:
+                  defaultRetention:
+                    mode: compliance
+                    period:
+                      duration: 30
+                      unit: days
+                  isFileLockEnabled: true
+              defaultServerSideEncryption:
+                isClientAuthorizedToRead: true
+                value:
+                  algorithm: AES256
+                  mode: SSE-B2
+              lifecycleRules:
+                - daysFromHidingToDeleting: 30
+                  daysFromUploadingToHiding: 60
+                  fileNamePrefix: logs/
+              replicationConfiguration:
+                isClientAuthorizedToRead: true
+                value:
+                  asReplicationSource:
+                    replicationRules:
+                      - destinationBucketId: 7b59fe8875c6214145260999
+                        fileNamePrefix: backup/
+                        includeExistingFiles: true
+                        isEnabled: true
+                        priority: 1
+                        replicationRuleName: daily-backup-replication
+                    sourceApplicationKeyId: appKey1234567890
+                  asReplicationDestination:
+                    sourceToDestinationKeyMapping: {}
+              revision: 42
+              options:
+                - s3
+  /b2api/v4/b2_list_buckets:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            accountId: a1b2c3d4e5f6g7h8i9j0
+          response:
+            body:
+              buckets:
+                - accountId: a1b2c3d4e5f6g7h8i9j0
+                  bucketId: 4a48fe8875c6214145260818
+                  bucketName: project-backups
+                  bucketType: allPrivate
+                  bucketInfo: {}
+                  corsRules:
+                    - corsRuleName: downloadFromAnyOrigin
+                      allowedOrigins:
+                        - https://example.com
+                      allowedHeaders:
+                        - range
+                        - authorization
+                      allowedOperations:
+                        - b2_download_file_by_id
+                        - b2_download_file_by_name
+                      exposeHeaders:
+                        - x-bz-content-sha1
+                        - x-bz-file-name
+                      maxAgeSeconds: 3600
+                  fileLockConfiguration:
+                    isClientAuthorizedToRead: true
+                    value:
+                      defaultRetention:
+                        mode: compliance
+                        period:
+                          duration: 30
+                          unit: days
+                      isFileLockEnabled: true
+                  defaultServerSideEncryption:
+                    isClientAuthorizedToRead: true
+                    value:
+                      algorithm: AES256
+                      mode: SSE-B2
+                  lifecycleRules:
+                    - daysFromHidingToDeleting: 90
+                      daysFromUploadingToHiding: 60
+                      fileNamePrefix: logs/
+                  replicationConfiguration:
+                    isClientAuthorizedToRead: true
+                    value:
+                      asReplicationSource:
+                        replicationRules:
+                          - destinationBucketId: 7b59fe8875c6214145260999
+                            fileNamePrefix: backup/
+                            includeExistingFiles: true
+                            isEnabled: true
+                            priority: 1
+                            replicationRuleName: daily-backup-replication
+                        sourceApplicationKeyId: appKey1234567890
+                      asReplicationDestination:
+                        sourceToDestinationKeyMapping: {}
+                  revision: 42
+                  options:
+                    - s3
+  /b2api/v4/b2_set_bucket_notification_rules:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            bucketId: 4a7f3e2b-9c1d-4f8a-8b2e-3d5f7a9c1234
+            eventNotificationRules:
+              - eventTypes:
+                  - b2:ObjectCreated:Upload
+                  - b2:ObjectCreated:MultipartUpload
+                isEnabled: true
+                name: ImageUploadNotifications
+                objectNamePrefix: images/
+                targetConfiguration:
+                  targetType: webhook
+                  url: https://hooks.example.com/b2/notifications
+          response:
+            body:
+              bucketId: 4a7f3e2b-9c1d-4f8a-8b2e-3d5f7a9c1234
+              eventNotificationRules:
+                - eventTypes:
+                    - b2:ObjectCreated:Upload
+                    - b2:ObjectCreated:MultipartUpload
+                  isEnabled: true
+                  isSuspended: false
+                  maxEventsPerBatch: 10
+                  name: ImageUploadNotifications
+                  objectNamePrefix: images/
+                  suspensionReason: ''
+                  targetConfiguration:
+                    targetType: webhook
+                    url: https://hooks.example.com/b2/notifications
+                    hmacSha256SigningSecret: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+                    customHeaders:
+                      - name: X-Custom-Auth
+                        value: Bearer abcdef1234567890
+  /b2api/v4/b2_get_bucket_notification_rules:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            bucketId: 4a7f3e2b-9c1d-4f5a-8b2e-3d9f7c1a2b4e
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              bucketId: 4a7f3e2b-9c1d-4f5a-8b2e-3d9f7c1a2b4e
+              eventNotificationRules:
+                - eventTypes:
+                    - b2:ObjectCreated:Upload
+                    - b2:ObjectCreated:MultipartUpload
+                  isEnabled: true
+                  isSuspended: false
+                  maxEventsPerBatch: 10
+                  name: UploadEventsRule
+                  objectNamePrefix: images/uploads/
+                  suspensionReason: ''
+                  targetConfiguration:
+                    targetType: webhook
+                    url: https://hooks.example.com/b2/notifications
+                    hmacSha256SigningSecret: a1b2c3d4e5f6g7h8i9j0k1l2m3n4o5p6
+                    customHeaders:
+                      - name: X-Custom-Auth
+                        value: Bearer abcdef1234567890
+                      - name: X-Event-Source
+                        value: BackblazeB2
+  /b2api/v4/b2_copy_file:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            sourceFileId: 4_z4f8e3b2c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f0
+            fileName: project_backup_2024_06_15.zip
+          response:
+            body:
+              accountId: a1b2c3d4e5f678901234567890abcdef
+              action: copy
+              bucketId: b2_bucket_1234567890abcdef
+              contentLength: 452389123
+              contentSha1: 3a7bd3e2360a3d5f8e4b2c1d9f0a7b6c5d4e3f2a
+              contentMd5: 9e107d9d372bb6826bd81d3542a419d6
+              contentType: application/zip
+              fileId: 4_z4f8e3b2c1d2e3f4g5h6i7j8k9l0m1n2o3p4q5r6s7t8u9v0w1x2y3z4a5b6c7d8e9f1
+              fileInfo: {}
+              fileName: project_backup_2024_06_15_copy.zip
+              fileRetention:
+                isClientAuthorizedToRead: true
+                value:
+                  mode: compliance
+                  retainUntilTimestamp: 1710000000000
+              legalHold:
+                isClientAuthorizedToRead: true
+                value: 'on'
+              replicationStatus: PENDING
+              serverSideEncryption:
+                algorithm: AES256
+                mode: SSE-B2
+              uploadTimestamp: 1686825600000
+  /b2api/v4/b2_create_bucket:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            accountId: a1b2c3d4e5f6
+            bucketName: project-data-storage
+            bucketType: allPrivate
+          response:
+            body:
+              accountId: a1b2c3d4e5f6
+              bucketId: 5f7e9a2b3c4d567890abcdef
+              bucketName: project-data-storage
+              bucketType: allPrivate
+              bucketInfo: {}
+              corsRules:
+                - corsRuleName: downloadFromAnyOrigin
+                  allowedOrigins:
+                    - https://example.com
+                  allowedHeaders:
+                    - range
+                    - authorization
+                  allowedOperations:
+                    - b2_download_file_by_id
+                    - b2_download_file_by_name
+                  exposeHeaders:
+                    - x-bz-content-sha1
+                    - x-bz-file-name
+                  maxAgeSeconds: 3600
+              fileLockConfiguration:
+                isClientAuthorizedToRead: true
+                value:
+                  defaultRetention:
+                    mode: compliance
+                    period:
+                      duration: 30
+                      unit: days
+                  isFileLockEnabled: true
+              defaultServerSideEncryption:
+                isClientAuthorizedToRead: true
+                value:
+                  algorithm: AES256
+                  mode: SSE-B2
+              lifecycleRules:
+                - daysFromHidingToDeleting: 90
+                  daysFromUploadingToHiding: 60
+                  fileNamePrefix: logs/
+              replicationConfiguration:
+                isClientAuthorizedToRead: true
+                value:
+                  asReplicationSource:
+                    replicationRules:
+                      - destinationBucketId: 9f8e7d6c5b4a3210fedcba98
+                        fileNamePrefix: backup/
+                        includeExistingFiles: true
+                        isEnabled: true
+                        priority: 1
+                        replicationRuleName: daily-backup-rule
+                    sourceApplicationKeyId: appKey1234567890
+                  asReplicationDestination:
+                    sourceToDestinationKeyMapping: {}
+              revision: 3
+              options:
+                - s3
+  /b2api/v4/b2_list_file_versions:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            bucketId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a7b6e
+            startFileName: documents/report.pdf
+            startFileId: 4_z4f8e9a7b6c5d3e2f1g0h9i8j7k6l5m4n3o2p1q
+            maxFileCount: 100
+            prefix: documents/
+            delimiter: /
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              files:
+                - accountId: 00112233445566778899aabbccddeeff
+                  action: upload
+                  bucketId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a7b6e
+                  contentLength: 5242880
+                  contentSha1: 3a7bd3e2360a3d4f8b9c1e2d3f4a5b6c7d8e9f0a
+                  contentMd5: 9e107d9d372bb6826bd81d3542a419d6
+                  contentType: application/pdf
+                  fileId: 4_z4f8e9a7b6c5d3e2f1g0h9i8j7k6l5m4n3o2p1q
+                  fileInfo:
+                    author: Jane Doe
+                    description: Quarterly financial report
+                  fileName: documents/report.pdf
+                  fileRetention:
+                    isClientAuthorizedToRead: true
+                    value:
+                      mode: governance
+                      retainUntilTimestamp: 1711929600000
+                  legalHold:
+                    isClientAuthorizedToRead: true
+                    value: 'off'
+                  replicationStatus: COMPLETED
+                  serverSideEncryption:
+                    algorithm: AES256
+                    mode: SSE-B2
+                  uploadTimestamp: 1685606400000
+                - accountId: 00112233445566778899aabbccddeeff
+                  action: hide
+                  bucketId: 4a7f3e2b-9c1d-4f5a-b8e7-2d3c9f1a7b6e
+                  contentLength: 0
+                  contentSha1: null
+                  contentMd5: null
+                  contentType: application/x-bz-hide-marker
+                  fileId: 4_z4f8e9a7b6c5d3e2f1g0h9i8j7k6l5m4n3o2p1r
+                  fileInfo: {}
+                  fileName: documents/old_report.pdf
+                  fileRetention:
+                    isClientAuthorizedToRead: false
+                    value:
+                      mode: null
+                      retainUntilTimestamp: null
+                  legalHold:
+                    isClientAuthorizedToRead: false
+                    value: null
+                  replicationStatus: PENDING
+                  serverSideEncryption:
+                    algorithm: null
+                    mode: null
+                  uploadTimestamp: 1683024000000
+              nextFileName: documents/summary.pdf
+              nextFileId: 4_z4f8e9a7b6c5d3e2f1g0h9i8j7k6l5m4n3o2p1s

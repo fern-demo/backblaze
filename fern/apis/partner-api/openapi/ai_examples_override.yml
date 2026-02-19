@@ -1,0 +1,174 @@
+paths:
+  /api/backup/v1/bz_delete_computer:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            accountId: acc-9f8b7c6d5e4a3b2c1d0e
+            computerId: comp-1234567890abcdef
+          response:
+            body:
+              - computerId: comp-1234567890abcdef
+                computerName: Johns-MacBook-Pro
+                lastFileUploadedTimestamp: 1685606400
+  /b2api/v3/b2_reserve_trial_create_account:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            - email: newuser@example.com
+              term: 14
+              storage: 5
+          response:
+            body:
+              - accountId: acc-1234567890abcdef
+                applicationKey: a1b2c3d4e5f67890abcdef1234567890
+                applicationKeyId: key-0987654321fedcba
+                s3Endpoint: s3.us-west.backblazeb2.com
+                startDate: '2024-01-15T09:30:00Z'
+                endDate: '2024-01-29T09:30:00Z'
+                email: newuser@example.com
+                bucketName: trial-bucket-001
+                bucketId: bucket-abcdef1234567890
+  /b2api/v3/b2_list_group_members:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            adminAccountId: 3a1f9b2e-7c4d-4f8a-9b2e-123456789abc
+            groupId: grp-9876543210abcdef
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              groupId: grp-9876543210abcdef
+              groupName: Engineering Team
+              groupMembers:
+                - accountId: acc-1234567890abcdef
+                  email: jane.doe@example.com
+                  groupId: grp-9876543210abcdef
+                  groupName: Engineering Team
+                  region: us-west-002
+                  s3Endpoint: https://s3.us-west-002.backblazeb2.com
+                  b2Stats:
+                    b2BytesStoredCount: 524288000
+                    b2FilesStoredCount: 1500
+                    b2StatsAsOfTimestamp: '2024-06-01T00:00:00Z'
+                    bucketCount: 5
+              nextEmail: null
+  /api/backup/v1/bz_list_computers:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            accountId: acc-9f8e7d6c5b4a3
+            startComputerId: comp-1234567890abcdef
+            maxComputerCount: 50
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              nextComputerId: comp-abcdef1234567890
+              computers:
+                - computerId: comp-1234567890abcdef
+                  computerName: John's MacBook Pro
+                  lastFileUploadedTimestamp: 1687804800
+                - computerId: comp-0987654321fedcba
+                  computerName: Marketing-PC-01
+                  lastFileUploadedTimestamp: 1687891200
+  /b2api/v3/b2_eject_group_member:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            adminAccountId: 3a1f9b2e-7c4d-4f8a-9d2e-5b6c7d8e9f01
+            groupId: grp-8f7e6d5c4b3a2
+            memberAccountId: 9b8a7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
+          response:
+            body:
+              accountId: 9b8a7c6d-5e4f-3a2b-1c0d-9e8f7a6b5c4d
+              email: jane.doe@example.com
+              groupId: grp-8f7e6d5c4b3a2
+              groupName: Enterprise Solutions Team
+              region: us-west-002
+              s3Endpoint: https://s3.us-west-002.backblazeb2.com
+  /b2api/v3/b2_authorize_account:
+    get:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          response:
+            body:
+              accountId: 123456789abcdef
+              authorizationToken: 4_VzJz6bXx7Y8a9BcDeFgHiJkLmNoPqRsTuVwXyZ0123456789abcdef
+              applicationKeyExpirationTimestamp: 1711929600
+              apiInfo:
+                storageApi:
+                  absoluteMinimumPartSize: 5000000
+                  apiUrl: https://api001.backblazeb2.com
+                  allowed:
+                    buckets:
+                      - id: bucket-01a2b3c4d5e6f7g8h9i0
+                        name: project-backups
+                    capabilities:
+                      - readFiles
+                      - writeFiles
+                      - listBuckets
+                    namePrefix: backup_
+                  downloadUrl: https://f001.backblazeb2.com
+                  recommendedPartSize: 100000000
+                  s3ApiUrl: https://s3.us-west-001.backblazeb2.com
+                groupsApi:
+                  capabilities:
+                    - all
+                  groupsApiUrl: https://api001.backblazeb2.com
+                  infoType: groupsApi
+  /b2api/v3/b2_list_groups:
+    get:
+      x-fern-examples:
+        - query-parameters:
+            adminAccountId: adminAccountId
+          headers:
+            Authorization: Authorization
+          response:
+            body:
+              accountId: 3a1f9b2e-7c4d-4f8a-9d2e-5b6c7d8e9f01
+              groups:
+                - groupId: grp-8f3d2a1b
+                  groupName: Engineering Team
+                  groupProducts:
+                    - BACKUP
+                    - STORAGE
+                  accountStandingDetails:
+                    state: B2_GOOD_STANDING
+                  b2Stats:
+                    b2BytesStoredCount: 1250000000
+                    b2FilesStoredCount: 3500
+                    b2StatsAsOfTimestamp: '2024-06-10T12:00:00Z'
+                    bucketCount: 12
+                  groupStats:
+                    createdTimestamp: '2022-11-15T09:30:00Z'
+                    groupStatsAsOfTimestamp: '2024-06-10T12:00:00Z'
+                    memberCount: 45
+              nextGroupId: grp-8f3d2a1c
+  /b2api/v3/b2_create_group_member:
+    post:
+      x-fern-examples:
+        - headers:
+            Authorization: Authorization
+          request:
+            adminAccountId: 3a1f5b7c-9d2e-4f8a-bb6e-2c9d7e4f1a2b
+            groupId: grp-9876543210
+            memberEmail: newuser@example.com
+          response:
+            body:
+              applicationKeyId: ak-1234567890abcdef
+              applicationKey: K7d9f8g7h6j5k4l3m2n1p0q9r8s7t6u5v4w3x2y1z0a9b8c7d6e5f4g3h2j1k0l9
+              groupMember:
+                accountId: 5b6c7d8e-9f0a-1b2c-3d4e-5f6a7b8c9d0e
+                email: newuser@example.com
+                groupId: grp-9876543210
+                groupName: Enterprise Storage Group
+                region: us-west
+                s3Endpoint: https://s3.us-west.backblazeb2.com
